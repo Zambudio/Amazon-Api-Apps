@@ -18,7 +18,7 @@ class AppGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Generador de Ofertas para Telegram")
-        self.root.geometry("1500x820")  # Ventana más ancha para mostrar el panel lateral cómodo
+        self.root.geometry("1400x820")  # Ventana más ancha para mostrar el panel lateral cómodo
         self.root.minsize(1000, 700)    # Definimos un tamaño mínimo para que no se "rompa" al redimensionar
         self.root.state('normal')      # Aseguramos que se abra en tamaño normal
         
@@ -107,17 +107,46 @@ class AppGUI:
 
         ttk.Button(self.image_frame, text="Subir propia foto", command=self.upload_custom_image).pack(fill=tk.X, pady=(5,0))
         
-        # Contenedor de acciones (Botones abajo)
-        actions_frame = ttk.Frame(main_frame)
-        actions_frame.pack(pady=(10, 0), fill=tk.X)
+        # Contenedor de acciones (Botones envío directo)
+        direct_actions_frame = ttk.Frame(main_frame)
+        direct_actions_frame.pack(pady=(10, 5), fill=tk.X)
         
-        # Botón para copiar al portapapeles
-        self.btn_copy = ttk.Button(actions_frame, text="📋 Copiar al Portapapeles", command=self.copy_to_clipboard)
-        self.btn_copy.pack(side=tk.LEFT, padx=5, expand=True, fill=tk.X)
+        # Botones de envío manual e inmediato (Ocupando bien los anchos)
+        self.btn_publish_admin = ttk.Button(direct_actions_frame, text="👀 Publicar AHORA en Prueba (Admin)", command=lambda: self.start_publish_to_channel("admin"))
+        self.btn_publish_admin.pack(side=tk.LEFT, padx=5, expand=True, fill=tk.X)
         
-        # Botón para enviar a Telegram
-        self.btn_publish = ttk.Button(actions_frame, text="🚀 Publicar con Foto Seleccionada", command=self.start_publish_to_channel)
-        self.btn_publish.pack(side=tk.RIGHT, padx=5, expand=True, fill=tk.X)
+        self.btn_publish_main = ttk.Button(direct_actions_frame, text="🚀 Publicar AHORA (BuenChollo Tech)", command=lambda: self.start_publish_to_channel("main"))
+        self.btn_publish_main.pack(side=tk.RIGHT, padx=5, expand=True, fill=tk.X)
+        
+        # Panel de Programación en NAS
+        schedule_frame = ttk.LabelFrame(main_frame, text=" ⏳ Programar Publicación (NAS) ", padding="10")
+        schedule_frame.pack(fill=tk.X, pady=(5, 0))
+        
+        lbl_dest = ttk.Label(schedule_frame, text="Canal Destino:")
+        lbl_dest.pack(side=tk.LEFT, padx=5)
+        
+        self.combo_target = ttk.Combobox(schedule_frame, values=["Canal Pruebas Admin", "Canal BuenChollo Tech OFICIAL"], state="readonly", width=30)
+        self.combo_target.current(1) # Por defecto al oficial
+        self.combo_target.pack(side=tk.LEFT, padx=5)
+        
+        from datetime import datetime
+        now = datetime.now()
+        lbl_date = ttk.Label(schedule_frame, text="Fecha (DD/MM):")
+        lbl_date.pack(side=tk.LEFT, padx=(15, 5))
+        
+        self.entry_date = ttk.Entry(schedule_frame, width=8)
+        self.entry_date.insert(0, now.strftime("%d/%m"))
+        self.entry_date.pack(side=tk.LEFT, padx=5)
+        
+        lbl_time = ttk.Label(schedule_frame, text="Hora (HH:MM):")
+        lbl_time.pack(side=tk.LEFT, padx=(15, 5))
+        
+        self.entry_time = ttk.Entry(schedule_frame, width=8)
+        self.entry_time.insert(0, now.strftime("%H:%M"))
+        self.entry_time.pack(side=tk.LEFT, padx=5)
+        
+        self.btn_schedule = ttk.Button(schedule_frame, text="☁️ Enviar al NAS para Programar", command=self.start_schedule_to_nas)
+        self.btn_schedule.pack(side=tk.RIGHT, padx=5)
         
         # Estado de imágenes
         self.current_product = None
@@ -135,13 +164,15 @@ class AppGUI:
         if block_ui:
             self.btn_generate.state(['disabled'])
             self.url_entry.state(['disabled'])
-            self.btn_copy.state(['disabled'])
-            self.btn_publish.state(['disabled'])
+            self.btn_publish_admin.state(['disabled'])
+            self.btn_publish_main.state(['disabled'])
+            self.btn_schedule.state(['disabled'])
         else:
             self.btn_generate.state(['!disabled'])
             self.url_entry.state(['!disabled'])
-            self.btn_copy.state(['!disabled'])
-            self.btn_publish.state(['!disabled'])
+            self.btn_publish_admin.state(['!disabled'])
+            self.btn_publish_main.state(['!disabled'])
+            self.btn_schedule.state(['!disabled'])
         self.root.update_idletasks() # Forzar dibujado
 
     def start_generation(self):
@@ -259,21 +290,16 @@ class AppGUI:
         self.set_status("Error crítico.", block_ui=False)
         messagebox.showerror("Error Interno", f"Fallo:\n{str(ExceptionObj)}")
 
-    def copy_to_clipboard(self):
-        texto = self.result_text.get(1.0, tk.END).strip()
-        if texto and texto != "❌ Error:":
-            self.root.clipboard_clear()
-            self.root.clipboard_append(texto)
-            self.root.update()
-            self.status_var.set("  📋 ¡Texto copiado al portapapeles!")
+    # Se ha eliminado el bloque de copy_to_clipboard a petición del usuario.
             
-    def start_publish_to_channel(self):
+    def start_publish_to_channel(self, target="admin"):
         texto = self.result_text.get(1.0, tk.END).strip()
         if not texto or texto.startswith("❌"):
             messagebox.showwarning("Aviso", "No hay un chollo válido para enviar.")
             return
             
-        if not messagebox.askyesno("Confirmar Envío", "¿Seguro que quieres publicar este mensaje en el Canal de Telegram?"):
+        nombre_destino = "Canal Principal OFICIAL" if target == "main" else "Canal de Pruebas Admin"
+        if not messagebox.askyesno("Confirmar Envío", f"¿Seguro que quieres publicar este mensaje en el {nombre_destino}?"):
             return
             
         if not self.publisher:
@@ -285,23 +311,98 @@ class AppGUI:
         if self.all_images:
             photo_url = self.all_images[self.current_img_idx]
             
-        self.set_status("Enviando a Telegram...", block_ui=True)
+        self.set_status(f"Enviando a {nombre_destino}...", block_ui=True)
         
-        thread = threading.Thread(target=self._run_publish, args=(texto, photo_url))
+        thread = threading.Thread(target=self._run_publish, args=(texto, photo_url, target))
         thread.daemon = True
         thread.start()
         
-    def _run_publish(self, texto, photo_url):
+    def _run_publish(self, texto, photo_url, target):
         try:
-            self.publisher.publish_to_telegram(texto, photo_url=photo_url)
+            if target == "main":
+                self.publisher.publish_to_main(texto, photo_url=photo_url)
+            else:
+                self.publisher.publish_to_admin(texto, photo_url=photo_url)
+                
             self.root.after(0, self._publish_success)
         except Exception as e:
             self.root.after(0, self._show_error, e)
             
     def _publish_success(self):
         self.set_status("Publicado con éxito", block_ui=False)
-        messagebox.showinfo("Éxito", "¡El chollo ha sido publicado correctamente en Telegram!")
+        messagebox.showinfo("Éxito", "¡El chollo ha sido publicado correctamente!")
         self.status_var.set("  🚀 Mensaje publicado en el canal.")
+
+    def start_schedule_to_nas(self):
+        texto = self.result_text.get(1.0, tk.END).strip()
+        if not texto or texto.startswith("❌"):
+            messagebox.showwarning("Aviso", "No hay un chollo válido para programar.")
+            return
+
+        target_str = self.combo_target.get()
+        target = "main" if "OFICIAL" in target_str else "admin"
+        
+        fecha = self.entry_date.get()
+        hora = self.entry_time.get()
+        
+        # Validar un poco el formato
+        if "/" not in fecha or ":" not in hora:
+            messagebox.showerror("Error", "Formato de fecha u hora incorrecto. Usa DD/MM y HH:MM")
+            return
+
+        # "02/04", "20:00" -> YYYY-MM-DD HH:MM:00
+        from datetime import datetime
+        year = datetime.now().year
+        day, month = fecha.split("/")
+        schedule_time_str = f"{year}-{month}-{day} {hora}:00"
+
+        # Obtener URL de imagen seleccionada
+        photo_url = ""
+        if self.all_images:
+            photo_url = self.all_images[self.current_img_idx]
+
+        self.set_status("  ☁️ Enviando al NAS...", block_ui=True)
+        
+        # Realizamos la petición en segundo plano
+        thread = threading.Thread(target=self._send_to_nas, args=(texto, target, schedule_time_str, photo_url))
+        thread.daemon = True
+        thread.start()
+
+    def _send_to_nas(self, text, target, schedule_time_str, photo_url):
+        import requests
+        import mimetypes
+        from src.config.settings import Config
+        import os
+        
+        nas_ip = os.getenv("NAS_SERVER_URL", "http://192.168.1.100:8000") # IP por defecto si no se configura
+        url = f"{nas_ip}/api/schedule"
+        
+        payload = {
+            "text": text,
+            "target": target,
+            "schedule_time": schedule_time_str
+        }
+        
+        files = {}
+        try:
+            # Si es un enlace normal de internet (Amazon)
+            if photo_url.startswith('http'):
+                payload["photo_url"] = photo_url
+                response = requests.post(url, data=payload, timeout=20)
+            else:
+                # Si es una foto local subida por ti, la empaquetamos
+                mime = mimetypes.guess_type(photo_url)[0] or 'image/jpeg'
+                with open(photo_url, 'rb') as f:
+                    files = {'photo': (os.path.basename(photo_url), f, mime)}
+                    response = requests.post(url, data=payload, files=files, timeout=30)
+                    
+            response.raise_for_status()
+            
+            self.root.after(0, lambda: self.set_status("  ✅ Guardado en el NAS", block_ui=False))
+            self.root.after(0, lambda: messagebox.showinfo("Éxito NAS", "¡El Programa ha sido guardado correctamente en tu Synology y se publicará a la hora acordada!"))
+            
+        except Exception as e:
+            self.root.after(0, self._show_error, e)
 
 def main():
     root = tk.Tk()

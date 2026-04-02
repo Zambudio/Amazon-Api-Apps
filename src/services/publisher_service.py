@@ -15,26 +15,24 @@ class PublisherService:
     def __init__(self):
         # Configuramos credenciales del bot por defecto
         self.default_bot_token = Config.TELEGRAM_BOT_TOKEN
-        self.default_channel_id = Config.TELEGRAM_CHANNEL_ID
+        self.default_admin_channel_id = Config.TELEGRAM_ADMIN_CHANNEL_ID
+        self.default_main_channel_id = Config.TELEGRAM_MAIN_CHANNEL_ID
+
+    def publish_to_admin(self, text: str, photo_url: str = None) -> bool:
+        return self.publish_to_telegram(text, photo_url, channel_id=self.default_admin_channel_id)
         
-        # Arquitectura preparada para el futuro multi-bot:
-        # self.registered_bots = {
-        #     "principal": TelegramBotAPI(token_1),
-        #     "canal_secundario": TelegramBotAPI(token_2)
-        # }
+    def publish_to_main(self, text: str, photo_url: str = None) -> bool:
+        return self.publish_to_telegram(text, photo_url, channel_id=self.default_main_channel_id)
 
     def publish_to_telegram(self, text: str, photo_url: str = None, bot_token: str = None, channel_id: str = None) -> bool:
         """
         Envía definitivamente el texto renderizado a Telegram.
-        Si hay photo_url, lo envía como Foto con el texto de pie de página (caption).
-        Si no, envía solo el texto.
         """
         token = bot_token or self.default_bot_token
-        channel = channel_id or self.default_channel_id
         
-        if not token or not channel:
-            logger.error("No se puede publicar: Falta TELEGRAM_BOT_TOKEN o TELEGRAM_CHANNEL_ID")
-            raise ValueError("Faltan credenciales de Telegram. Asegúrate de tener TELEGRAM_BOT_TOKEN y TELEGRAM_CHANNEL_ID en el archivo .env")
+        if not token or not channel_id:
+            logger.error("No se puede publicar: Falta TELEGRAM_BOT_TOKEN o ID_DEL_CANAL")
+            raise ValueError("Faltan credenciales o no se ha configurado el ID del canal de destino en el .env")
             
         tg_api = TelegramBotAPI(token)
         
@@ -47,7 +45,7 @@ class PublisherService:
         if photo_url:
             # Publicación de FOTO con caption (el texto es el pie de foto)
             tg_api.send_photo(
-                chat_id=channel, 
+                chat_id=channel_id, 
                 photo_url=photo_url, 
                 caption=payload["text"], 
                 entities=payload["entities"]
@@ -55,7 +53,7 @@ class PublisherService:
         else:
             # Publicación de SOLO TEXTO
             tg_api.send_message(
-                chat_id=channel, 
+                chat_id=channel_id, 
                 text=payload["text"], 
                 parse_mode=None,
                 entities=payload["entities"]

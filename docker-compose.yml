@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  buenchollo-scheduler:
+    build: 
+      context: .
+      dockerfile: Dockerfile.nas
+    container_name: buenchollo_nas_brain
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./nas_data:/app/nas_data
+    environment:
+      - TZ=Europe/Madrid # Fundumental para que la hora encaje con tu zona

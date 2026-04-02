@@ -39,7 +39,7 @@ def format_telegram_message(product: ProductInfo) -> str:
         mensaje += f"💶 Precio: {price}\n"
         
     if savings_pct != "0":
-        mensaje += f"💰 Ahorro: {ahorro} | -{savings_pct}%\n\n"
+        mensaje += f"💰 Ahorro: {ahorro} | -{savings_pct} %\n\n"
     else:
         if ahorro != "0 €":
             mensaje += f"💰 Ahorro: {ahorro}\n\n"
@@ -106,6 +106,14 @@ def format_text_with_custom_emojis(text: str) -> dict:
             })
             
             start = idx + len(emoji_char)
+
+    # Añadir negrita a todo el texto
+    total_length = len(text.encode('utf-16-le')) // 2
+    entities.append({
+        "type": "bold",
+        "offset": 0,
+        "length": total_length
+    })
 
     return {
         "text": text,

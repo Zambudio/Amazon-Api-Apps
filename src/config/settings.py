@@ -17,9 +17,10 @@ class Config:
     AMAZON_CLIENT_SECRET: str = os.getenv("AMAZON_CLIENT_SECRET", "")
     AMAZON_AFFILIATE_TAG: str = os.getenv("AMAZON_AFFILIATE_TAG", "buenchollo0b-21")
     
-    # Telegram Config (Futuro)
+    # Telegram Config
     TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
-    TELEGRAM_CHANNEL_ID: str = os.getenv("TELEGRAM_CHANNEL_ID", "")
+    TELEGRAM_ADMIN_CHANNEL_ID: str = os.getenv("TELEGRAM_ADMIN_CHANNEL_ID", os.getenv("TELEGRAM_CHANNEL_ID", ""))
+    TELEGRAM_MAIN_CHANNEL_ID: str = os.getenv("TELEGRAM_MAIN_CHANNEL_ID", "")
     
     # OpenAI Config para copys atractivos
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
