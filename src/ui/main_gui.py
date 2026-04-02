@@ -1,5 +1,7 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
+import ttkbootstrap as ttk
+from ttkbootstrap.constants import *
+from tkinter import messagebox
 import threading
 import sys
 import os
@@ -18,14 +20,8 @@ class AppGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Generador de Ofertas para Telegram")
-        self.root.geometry("1400x820")  # Ventana más ancha para mostrar el panel lateral cómodo
-        self.root.minsize(1000, 700)    # Definimos un tamaño mínimo para que no se "rompa" al redimensionar
-        self.root.state('normal')      # Aseguramos que se abra en tamaño normal
-        
-        # Configurar un poco el estilo (más moderno)
-        style = ttk.Style()
-        if 'clam' in style.theme_names():
-            style.theme_use('clam')
+        self.root.geometry("1400x820")
+        self.root.minsize(1100, 750)
         
         # Iniciar dominio y publicación
         self.use_case = GeneratePostUseCase()
@@ -38,15 +34,44 @@ class AppGUI:
 
     def _build_ui(self):
         # Marco principal
-        main_frame = ttk.Frame(self.root, padding="15")
-        main_frame.pack(fill=tk.BOTH, expand=True)
+        main_frame = ttk.Frame(self.root)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=15, pady=15)
         
-        # Título
-        title_lbl = ttk.Label(main_frame, text="Publicador de Chollos", font=("Helvetica", 14, "bold"))
-        title_lbl.pack(anchor="n", pady=(0, 15))
+        # Título y Cabecera con estilo más moderno
+        header_frame = ttk.Frame(main_frame, bootstyle="secondary")
+        header_frame.pack(fill=tk.X, pady=(0, 20), ipady=10)
+        
+        # Intentar cargar el logo desde el directorio raíz
+        logo_path = os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')), "logo.png")
+        self.logo_img = None
+        
+        # Contenedor para título y logo dentro de la cabecera
+        content_header = ttk.Frame(header_frame, bootstyle="secondary")
+        content_header.pack(expand=True)
+
+        if os.path.exists(logo_path):
+            try:
+                logo_img_raw = Image.open(logo_path)
+                logo_img_raw.thumbnail((80, 80)) # Tamaño elegante para el logo
+                self.logo_img = ImageTk.PhotoImage(logo_img_raw)
+                
+                logo_lbl = ttk.Label(content_header, image=self.logo_img, bootstyle="inverse-secondary")
+                logo_lbl.pack(side=tk.LEFT, padx=20)
+            except Exception as e:
+                print(f"No se pudo cargar el logo: {e}")
+
+        # Contenedor de textos (Título y subtítulo)
+        text_header_frame = ttk.Frame(content_header, bootstyle="secondary")
+        text_header_frame.pack(side=tk.LEFT)
+
+        title_lbl = ttk.Label(text_header_frame, text="🚀 PUBLICADOR DE CHOLLOS", font=("Segoe UI", 20, "bold"), bootstyle="inverse-secondary")
+        title_lbl.pack(anchor="w")
+        
+        subtitle_lbl = ttk.Label(text_header_frame, text="Gestión inteligente de ofertas para Telegram", font=("Segoe UI", 10), bootstyle="inverse-secondary")
+        subtitle_lbl.pack(anchor="w")
         
         # Marco para controles del proveedor (Amazon por ahora, futuro extensible)
-        provider_frame = ttk.LabelFrame(main_frame, text=" 🛍️ Plataforma: Amazon ", padding="10")
+        provider_frame = ttk.LabelFrame(main_frame, text=" Plataforma: Amazon ")
         provider_frame.pack(fill=tk.X, pady=(0, 15))
         
         lbl_inst = ttk.Label(provider_frame, text="Introduce la URL o ASIN del producto:")
@@ -56,10 +81,10 @@ class AppGUI:
         input_frame = ttk.Frame(provider_frame)
         input_frame.pack(fill=tk.X)
         
-        self.url_entry = ttk.Entry(input_frame, font=("Helvetica", 10))
+        self.url_entry = ttk.Entry(input_frame, font=("Segoe UI", 11), bootstyle="primary")
         self.url_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 10))
         
-        self.btn_generate = ttk.Button(input_frame, text="➔ Extraer y Generar", command=self.start_generation)
+        self.btn_generate = ttk.Button(input_frame, text="➔ Extraer y Generar", command=self.start_generation, bootstyle="primary")
         self.btn_generate.pack(side=tk.RIGHT)
         
         # Bind enter key
@@ -69,7 +94,7 @@ class AppGUI:
         content_frame = ttk.Frame(main_frame)
         content_frame.pack(fill=tk.BOTH, expand=True)
         
-        result_frame = ttk.LabelFrame(content_frame, text=" 📝 Mensaje Formateado (Edita el contenido antes de enviar) ", padding="10")
+        result_frame = ttk.LabelFrame(content_frame, text=" Mensaje Formateado (Edita el contenido antes de enviar) ")
         result_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 10))
         
         # Text area con scroll y diseño mejorado para lectura
@@ -86,7 +111,7 @@ class AppGUI:
         scroll_y.pack(side=tk.RIGHT, fill=tk.Y)
         
         # Panel de Imagen (Más grande)
-        self.image_frame = ttk.LabelFrame(content_frame, text=" 🖼️ Imagen ", padding="10", width=420)
+        self.image_frame = ttk.LabelFrame(content_frame, text=" Imagen ", width=420)
         self.image_frame.pack(side=tk.RIGHT, fill=tk.Y)
         self.image_frame.pack_propagate(False)
         
@@ -96,56 +121,72 @@ class AppGUI:
         img_controls = ttk.Frame(self.image_frame)
         img_controls.pack(fill=tk.X, side=tk.BOTTOM)
         
-        self.btn_prev_img = ttk.Button(img_controls, text="◀", width=5, command=self.prev_image)
+        self.btn_prev_img = ttk.Button(img_controls, text="◀", width=5, command=self.prev_image, bootstyle="link")
         self.btn_prev_img.pack(side=tk.LEFT)
         
         self.img_idx_label = ttk.Label(img_controls, text="0 / 0", font=("Segoe UI", 10, "bold"))
         self.img_idx_label.pack(side=tk.LEFT, expand=True)
         
-        self.btn_next_img = ttk.Button(img_controls, text="▶", width=5, command=self.next_image)
+        self.btn_next_img = ttk.Button(img_controls, text="▶", width=5, command=self.next_image, bootstyle="link")
         self.btn_next_img.pack(side=tk.RIGHT)
 
-        ttk.Button(self.image_frame, text="Subir propia foto", command=self.upload_custom_image).pack(fill=tk.X, pady=(5,0))
+        ttk.Button(self.image_frame, text="Subir propia foto", command=self.upload_custom_image, bootstyle="outline-warning").pack(fill=tk.X, pady=(15,0))
         
         # Contenedor de acciones (Botones envío directo)
         direct_actions_frame = ttk.Frame(main_frame)
         direct_actions_frame.pack(pady=(10, 5), fill=tk.X)
         
-        # Botones de envío manual e inmediato (Ocupando bien los anchos)
-        self.btn_publish_admin = ttk.Button(direct_actions_frame, text="👀 Publicar AHORA en Prueba (Admin)", command=lambda: self.start_publish_to_channel("admin"))
-        self.btn_publish_admin.pack(side=tk.LEFT, padx=5, expand=True, fill=tk.X)
+        lbl_target_direct = ttk.Label(direct_actions_frame, text="Canal Destino:")
+        lbl_target_direct.pack(side=tk.LEFT, padx=5)
         
-        self.btn_publish_main = ttk.Button(direct_actions_frame, text="🚀 Publicar AHORA (BuenChollo Tech)", command=lambda: self.start_publish_to_channel("main"))
-        self.btn_publish_main.pack(side=tk.RIGHT, padx=5, expand=True, fill=tk.X)
+        self.combo_direct_target = ttk.Combobox(direct_actions_frame, values=["Canal Pruebas Admin", "Canal BuenChollo Tech OFICIAL"], state="readonly", width=30, bootstyle="success")
+        self.combo_direct_target.current(0) # Por defecto al canal de pruebas (Admin)
+        self.combo_direct_target.pack(side=tk.LEFT, padx=5)
         
+        self.btn_publish = ttk.Button(direct_actions_frame, text="🚀 Publicar AHORA", command=self.start_publish_to_channel, bootstyle="success")
+        self.btn_publish.pack(side=tk.RIGHT, padx=5, expand=True, fill=tk.X)
+        
+        # Contenedor padre para ocultar/mostrar NAS
+        self.nas_container = ttk.Frame(main_frame)
+        self.nas_container.pack(fill=tk.X, pady=(5, 0))
+        
+        self.show_nas_var = tk.BooleanVar(value=False)
+        self.btn_toggle_nas = ttk.Checkbutton(
+            self.nas_container, 
+            text="➕ Mostrar opciones de Programación en NAS", 
+            variable=self.show_nas_var, 
+            command=self.toggle_nas_frame,
+            bootstyle="secondary"
+        )
+        self.btn_toggle_nas.pack(anchor="w", pady=(0, 5))
+
         # Panel de Programación en NAS
-        schedule_frame = ttk.LabelFrame(main_frame, text=" ⏳ Programar Publicación (NAS) ", padding="10")
-        schedule_frame.pack(fill=tk.X, pady=(5, 0))
+        self.schedule_frame = ttk.LabelFrame(self.nas_container, text=" Programar Publicación (NAS) ")
         
-        lbl_dest = ttk.Label(schedule_frame, text="Canal Destino:")
+        lbl_dest = ttk.Label(self.schedule_frame, text="Canal Destino:")
         lbl_dest.pack(side=tk.LEFT, padx=5)
         
-        self.combo_target = ttk.Combobox(schedule_frame, values=["Canal Pruebas Admin", "Canal BuenChollo Tech OFICIAL"], state="readonly", width=30)
-        self.combo_target.current(1) # Por defecto al oficial
+        self.combo_target = ttk.Combobox(self.schedule_frame, values=["Canal Pruebas Admin", "Canal BuenChollo Tech OFICIAL"], state="readonly", width=30)
+        self.combo_target.current(0) # Por defecto al canal de pruebas (Admin)
         self.combo_target.pack(side=tk.LEFT, padx=5)
         
         from datetime import datetime
         now = datetime.now()
-        lbl_date = ttk.Label(schedule_frame, text="Fecha (DD/MM):")
+        lbl_date = ttk.Label(self.schedule_frame, text="Fecha (DD/MM):")
         lbl_date.pack(side=tk.LEFT, padx=(15, 5))
         
-        self.entry_date = ttk.Entry(schedule_frame, width=8)
+        self.entry_date = ttk.Entry(self.schedule_frame, width=8)
         self.entry_date.insert(0, now.strftime("%d/%m"))
         self.entry_date.pack(side=tk.LEFT, padx=5)
         
-        lbl_time = ttk.Label(schedule_frame, text="Hora (HH:MM):")
+        lbl_time = ttk.Label(self.schedule_frame, text="Hora (HH:MM):")
         lbl_time.pack(side=tk.LEFT, padx=(15, 5))
         
-        self.entry_time = ttk.Entry(schedule_frame, width=8)
+        self.entry_time = ttk.Entry(self.schedule_frame, width=8)
         self.entry_time.insert(0, now.strftime("%H:%M"))
         self.entry_time.pack(side=tk.LEFT, padx=5)
         
-        self.btn_schedule = ttk.Button(schedule_frame, text="☁️ Enviar al NAS para Programar", command=self.start_schedule_to_nas)
+        self.btn_schedule = ttk.Button(self.schedule_frame, text="☁️ Enviar al NAS para Programar", command=self.start_schedule_to_nas, bootstyle="outline-secondary")
         self.btn_schedule.pack(side=tk.RIGHT, padx=5)
         
         # Estado de imágenes
@@ -159,19 +200,27 @@ class AppGUI:
         status_bar = ttk.Label(self.root, textvariable=self.status_var, relief=tk.SUNKEN, anchor="w", padding=2)
         status_bar.pack(side=tk.BOTTOM, fill=tk.X)
 
+    def toggle_nas_frame(self):
+        if self.show_nas_var.get():
+            self.schedule_frame.pack(fill=tk.X)
+            self.btn_toggle_nas.config(text="➖ Ocultar opciones de Programación en NAS")
+        else:
+            self.schedule_frame.pack_forget()
+            self.btn_toggle_nas.config(text="➕ Mostrar opciones de Programación en NAS")
+
     def set_status(self, text, block_ui=False):
         self.status_var.set(f"  {text}")
         if block_ui:
             self.btn_generate.state(['disabled'])
             self.url_entry.state(['disabled'])
-            self.btn_publish_admin.state(['disabled'])
-            self.btn_publish_main.state(['disabled'])
+            self.btn_publish.state(['disabled'])
+            self.combo_direct_target.state(['disabled'])
             self.btn_schedule.state(['disabled'])
         else:
             self.btn_generate.state(['!disabled'])
             self.url_entry.state(['!disabled'])
-            self.btn_publish_admin.state(['!disabled'])
-            self.btn_publish_main.state(['!disabled'])
+            self.btn_publish.state(['!disabled'])
+            self.combo_direct_target.state(['!disabled'])
             self.btn_schedule.state(['!disabled'])
         self.root.update_idletasks() # Forzar dibujado
 
@@ -292,15 +341,16 @@ class AppGUI:
 
     # Se ha eliminado el bloque de copy_to_clipboard a petición del usuario.
             
-    def start_publish_to_channel(self, target="admin"):
+    def start_publish_to_channel(self):
+        target_str = self.combo_direct_target.get()
+        target = "main" if "OFICIAL" in target_str else "admin"
+
         texto = self.result_text.get(1.0, tk.END).strip()
         if not texto or texto.startswith("❌"):
             messagebox.showwarning("Aviso", "No hay un chollo válido para enviar.")
             return
             
         nombre_destino = "Canal Principal OFICIAL" if target == "main" else "Canal de Pruebas Admin"
-        if not messagebox.askyesno("Confirmar Envío", f"¿Seguro que quieres publicar este mensaje en el {nombre_destino}?"):
-            return
             
         if not self.publisher:
             messagebox.showerror("Error", "El servicio de publicación falló al iniciar. ¿Configuraste TELEGRAM_BOT_TOKEN?")
@@ -405,7 +455,8 @@ class AppGUI:
             self.root.after(0, self._show_error, e)
 
 def main():
-    root = tk.Tk()
+    # Usar Window de ttkbootstrap para activar el sistema de temas dinámico
+    root = ttk.Window(themename="darkly")
     app = AppGUI(root)
     root.mainloop()
 

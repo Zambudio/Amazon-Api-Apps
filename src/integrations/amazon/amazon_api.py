@@ -158,8 +158,13 @@ def extraer_producto(item, tag: str) -> ProductInfo:
     p.asin = item.asin or ""
     p.url_afiliado = item.detail_page_url or f"https://www.amazon.es/dp/{p.asin}?tag={tag}"
 
-    # Título
-    p.titulo = _safe(item, "item_info", "title", "display_value", default="")
+    # Título (filtrado para quedarnos solo con la primera parte antes de guiones, comas, etc)
+    raw_title = _safe(item, "item_info", "title", "display_value", default="")
+    if raw_title:
+        # Dividir por: coma+espacio, guión entre espacios, guiones largos, underscore entre espacios o barra vertical
+        p.titulo = re.split(r'(?:,\s+|\s+-\s+|\s+–\s+|\s+—\s+|\s+_\s+|\s+\|\s+|\|)', raw_title)[0].strip()
+    else:
+        p.titulo = ""
 
     # Marca
     p.marca = _safe(item, "item_info", "by_line_info", "brand", "display_value", default="")
