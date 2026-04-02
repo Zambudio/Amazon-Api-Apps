@@ -19,10 +19,10 @@ except ImportError:
     pass
 
 # Evitar errores de codificación en consola Windows (char '→', '✓', '✗', etc.)
-if sys.stdout.encoding != 'utf-8':
+if sys.stdout is not None and getattr(sys.stdout, 'encoding', None) != 'utf-8':
     try:
         sys.stdout.reconfigure(encoding='utf-8')
-    except AttributeError:
+    except (AttributeError, io.UnsupportedOperation):
         pass
 
 from amazon_creatorsapi import AmazonCreatorsApi, Country

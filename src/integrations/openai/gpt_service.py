@@ -31,14 +31,15 @@ class GPTService:
         full_text = "\n- ".join(features)
         
         prompt = (
-            "Eres un experto copywriter comercial para un canal de chollos en Telegram.\n"
-            "Tu objetivo es leer las siguientes características técnicas de un producto y "
-            "sintetizarlas en un único bloque de texto breve, muy atractivo, destacando "
-            "los beneficios clave sin enrollarte. Usa un tono cercano y persuasivo.\n\n"
+            "Eres un experto copywriter comercial para un canal de chollos tecnológicos en Telegram.\n"
+            "Tu objetivo es leer las características técnicas de un producto y "
+            "sintetizarlas en un único bloque de texto MUY breve, muy atractivo y persuasivo.\n\n"
             "Restricciones:\n"
-            "- Máximo 3 o 4 líneas.\n"
-            "- No uses viñetas (- o *), redáctalo como un pequeño párrafo fluido.\n"
-            "- No incluyas hashtags de Telegram.\n"
+            "- Máximo 2 o 3 líneas cortas.\n"
+            "- Prohibido empezar con muletillas como 'Descubre...', 'Presentamos...', 'Eleva tu...', 'Transforma tu...', 'Experimenta el...'.\n"
+            "- Empieza directamente hablando del producto o de su beneficio principal.\n"
+            "- No uses viñetas (- o *), redáctalo como un pequeño párrafo fluido y directo.\n"
+            "- No incluyas hashtags ni menciones al canal.\n"
             "- No inventes características que no estén en el texto original.\n\n"
             "Características originales:\n- " + full_text
         )
