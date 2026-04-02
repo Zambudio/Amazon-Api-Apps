@@ -10,7 +10,7 @@ Para ejecutar el publicador sin abrir código ni terminales:
 
 1.  Ve a la carpeta **`dist`** en la raíz del proyecto.
 2.  Entra en la subcarpeta **`PublicadorBuenChollo`**.
-3.  Busca el archivo **`PublicadorBuenChollo.exe`** (tiene un icono de una pluma azul/gris por defecto).
+3.  Busca el archivo **`PublicadorBuenChollo.exe`** (Verás que lleva el logotipo circular de **BC TECH**).
 4.  **Recomendación:** Haz clic derecho sobre él y selecciona `Enviar a... > Escritorio (crear acceso directo)` para tenerlo siempre a mano.
 
 > [!IMPORTANT]
@@ -34,7 +34,12 @@ Para ejecutar el publicador sin abrir código ni terminales:
 - **Subida de Capturas:** Opción de botón "Subir propia foto" para cuando has hecho una captura de pantalla cuadrada personalizada.
 - **Visor en Tiempo Real:** Previsualización de gran tamaño (380px) dentro de la propia aplicación.
 
-### 4. Integración con Telegram
+### 4. Interfaz Moderna (Darkly)
+- **Tema Oscuro:** Diseño elegante con colores de acción (Verde para publicar, Azul para generar).
+- **Logotipo Integrado:** Cabecera profesional con el logo de BC TECH.
+- **NAS Oculto:** Opciones de programación avanzada plegables para una vista más limpia.
+
+### 5. Integración con Telegram
 - **Emojis Premium:** Convierte automáticamente emojis estándar en iconos animados Premium de Telegram (usando `custom_emoji_id`).
 - **Formato Foto + Texto:** Envía la imagen seleccionada y coloca todo el texto de la oferta como pie de foto (caption).
 
@@ -60,10 +65,10 @@ Si necesitas cambiar de canal o de bot, edita el archivo `.env`:
 ## 🛠️ Comandos de Mantenimiento
 
 ### Actualizar el Ejecutable (.exe)
-Si haces cambios en el código (como el estilo de redacción de la IA o el diseño de la ventana), debes volver a generar el ejecutable lanzando este comando en la terminal:
+Si haces cambios en el código o en el diseño de la ventana, debes volver a generar el ejecutable. Para ello, ahora usamos el archivo de configuración `.spec` que ya incluye el icono y los archivos necesarios:
 
 ```bash
-pyinstaller --noconfirm --onedir --windowed --add-data "src;src" --add-data ".env;." --name "PublicadorBuenChollo" run_gui.py
+pyinstaller PublicadorBuenChollo.spec --noconfirm
 ```
 
 ---

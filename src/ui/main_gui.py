@@ -23,6 +23,14 @@ class AppGUI:
         self.root.geometry("1400x820")
         self.root.minsize(1100, 750)
         
+        # Intentar poner el icono de la ventana (necesita formato .ico en Windows)
+        try:
+            ico_path = os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')), "logo.ico")
+            if os.path.exists(ico_path):
+                self.root.iconbitmap(ico_path)
+        except Exception as e:
+            print(f"No se pudo cargar el icono de la ventana: {e}")
+        
         # Iniciar dominio y publicación
         self.use_case = GeneratePostUseCase()
         try:
