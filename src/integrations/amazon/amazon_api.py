@@ -71,6 +71,7 @@ class ProductInfo:
     marca: str = ""
     categoria: str = ""
     descripcion: list[str] = field(default_factory=list)
+    descripcion_gpt: Optional[str] = None
     precio_actual: Optional[float] = None
     precio_anterior: Optional[float] = None
     descuento_porcentaje: Optional[int] = None
@@ -78,6 +79,7 @@ class ProductInfo:
     disponibilidad: str = ""
     es_oferta: bool = False
     badge_oferta: str = ""
+    fin_oferta: Optional[str] = None
     valoracion: Optional[float] = None
     num_valoraciones: Optional[int] = None
     imagen_principal: str = ""
@@ -213,10 +215,10 @@ def extraer_producto(item, tag: str) -> ProductInfo:
                 p.precio_actual = getattr(price_obj, "amount", None)
                 p.moneda = getattr(price_obj, "currency", "EUR")
 
-            # Precio sin descuento (saving basis)
-            savings_basis = _safe(listing, "price", "savings_basis", "money")
-            if savings_basis:
-                p.precio_anterior = getattr(savings_basis, "amount", None)
+            # Precio sin descuento (saving_basis)
+            saving_basis = _safe(listing, "price", "saving_basis", "money")
+            if saving_basis:
+                p.precio_anterior = getattr(saving_basis, "amount", None)
 
             # % descuento
             savings_pct = _safe(listing, "price", "savings", "percentage")
@@ -232,10 +234,14 @@ def extraer_producto(item, tag: str) -> ProductInfo:
                 p.disponibilidad = avail
 
             # Badge oferta (ej: "Oferta del día", "Tiempo limitado")
-            deal = _safe(listing, "deal_details", "badge")
-            if deal:
-                p.badge_oferta = deal
+            deal_badge = _safe(listing, "deal_details", "badge")
+            if deal_badge:
+                p.badge_oferta = deal_badge
                 p.es_oferta = True
+
+            deal_end = _safe(listing, "deal_details", "end_time")
+            if deal_end:
+                p.fin_oferta = deal_end
 
             # Vendedor
             p.vendedor = _safe(listing, "merchant_info", "name", default="")
