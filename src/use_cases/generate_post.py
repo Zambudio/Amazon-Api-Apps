@@ -2,6 +2,9 @@ from typing import Optional
 from src.services.amazon_service import AmazonService
 from src.integrations.openai.gpt_service import GPTService
 from src.formatters.telegram_formatter import format_telegram_message
+from src.config.settings import Config
+from src.integrations.storage.json_category_repository import JsonCategoryRepository
+from src.domain.hashtag_rules import normalize_hashtag
 
 class GeneratePostUseCase:
     """
@@ -12,6 +15,7 @@ class GeneratePostUseCase:
     def __init__(self, amazon_service=AmazonService(), gpt_service=GPTService()):
         self.amazon_service = amazon_service
         self.gpt_service = gpt_service
+        self.category_repository = JsonCategoryRepository(Config.CATEGORIES_FILE_PATH)
         
     def execute(self, url_or_asin: str) -> dict:
         """
@@ -33,7 +37,35 @@ class GeneratePostUseCase:
         if product_info.descripcion:
             product_info.descripcion_gpt = self.gpt_service.sintetizar_descripcion(product_info.descripcion)
             
-        # 3. Generación del mensaje / publicación
+        # 3. Generación del mensaje base
         mensaje = format_telegram_message(product_info)
+
+        # 4. Selección de categorías desde el catálogo JSON usando GPT
+        try:
+            catalog = self.category_repository.load_catalog()
+            categorias_disponibles = catalog.to_sorted_list()
+        except Exception:
+            categorias_disponibles = []
+
+        categorias_elegidas = []
+        if categorias_disponibles:
+            titulo_ref = product_info.titulo or ""
+            desc_ref = product_info.descripcion_gpt or (
+                product_info.descripcion[0] if product_info.descripcion else ""
+            )
+            raw_categories = self.gpt_service.seleccionar_categorias(
+                titulo=titulo_ref,
+                descripcion_resumida=desc_ref,
+                categorias_disponibles=categorias_disponibles,
+            )
+            # Normalizamos siempre para garantizar formato #Categoria
+            categorias_elegidas = []
+            for cat in raw_categories or []:
+                normalized = normalize_hashtag(cat)
+                if normalized:
+                    categorias_elegidas.append(normalized)
+
+        if categorias_elegidas:
+            mensaje = f"{mensaje}\n{' '.join(categorias_elegidas)}"
         
         return {"text": mensaje, "product": product_info}

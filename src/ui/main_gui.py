@@ -1,6 +1,5 @@
 import tkinter as tk
 import ttkbootstrap as ttk
-from ttkbootstrap.constants import *
 from tkinter import messagebox
 import threading
 import sys
@@ -15,6 +14,11 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../.
 
 from src.use_cases.generate_post import GeneratePostUseCase
 from src.services.publisher_service import PublisherService
+from src.config.settings import Config
+from src.integrations.storage.json_category_repository import JsonCategoryRepository
+from src.use_cases.get_categories_for_ui import GetCategoriesForUIUseCase
+from src.use_cases.upsert_categories_from_post import UpsertCategoriesFromPostUseCase
+from src.domain.hashtag_rules import normalize_hashtag
 
 class AppGUI:
     def __init__(self, root):
@@ -35,8 +39,12 @@ class AppGUI:
         self.use_case = GeneratePostUseCase()
         try:
             self.publisher = PublisherService()
-        except:
+        except Exception:
             self.publisher = None
+
+        self.category_repository = JsonCategoryRepository(Config.CATEGORIES_FILE_PATH)
+        self.get_categories_use_case = GetCategoriesForUIUseCase(self.category_repository)
+        self.upsert_categories_use_case = UpsertCategoriesFromPostUseCase(self.category_repository)
         
         self._build_ui()
 
@@ -153,6 +161,25 @@ class AppGUI:
         
         self.btn_publish = ttk.Button(direct_actions_frame, text="🚀 Publicar AHORA", command=self.start_publish_to_channel, bootstyle="success")
         self.btn_publish.pack(side=tk.RIGHT, padx=5, expand=True, fill=tk.X)
+
+        category_frame = ttk.LabelFrame(main_frame, text=" Categorías del Canal ")
+        category_frame.pack(fill=tk.X, pady=(5, 10))
+
+        ttk.Label(category_frame, text="Categoría existente:").pack(side=tk.LEFT, padx=(8, 5), pady=8)
+        self.combo_categories = ttk.Combobox(category_frame, state="readonly", width=32)
+        self.combo_categories.pack(side=tk.LEFT, padx=5)
+
+        ttk.Label(category_frame, text="o Nueva categoría:").pack(side=tk.LEFT, padx=(12, 5))
+        self.entry_new_category = ttk.Entry(category_frame, width=22)
+        self.entry_new_category.pack(side=tk.LEFT, padx=5)
+
+        self.btn_add_category = ttk.Button(
+            category_frame,
+            text="Añadir categoría al catálogo",
+            command=self.add_category_to_message,
+            bootstyle="outline-info"
+        )
+        self.btn_add_category.pack(side=tk.LEFT, padx=(10, 8))
         
         # Contenedor padre para ocultar/mostrar NAS
         self.nas_container = ttk.Frame(main_frame)
@@ -208,6 +235,8 @@ class AppGUI:
         status_bar = ttk.Label(self.root, textvariable=self.status_var, relief=tk.SUNKEN, anchor="w", padding=2)
         status_bar.pack(side=tk.BOTTOM, fill=tk.X)
 
+        self.refresh_categories()
+
     def toggle_nas_frame(self):
         if self.show_nas_var.get():
             self.schedule_frame.pack(fill=tk.X)
@@ -224,13 +253,49 @@ class AppGUI:
             self.btn_publish.state(['disabled'])
             self.combo_direct_target.state(['disabled'])
             self.btn_schedule.state(['disabled'])
+            self.combo_categories.state(['disabled'])
+            self.entry_new_category.state(['disabled'])
+            self.btn_add_category.state(['disabled'])
         else:
             self.btn_generate.state(['!disabled'])
             self.url_entry.state(['!disabled'])
             self.btn_publish.state(['!disabled'])
             self.combo_direct_target.state(['!disabled'])
             self.btn_schedule.state(['!disabled'])
+            self.combo_categories.state(['readonly'])
+            self.entry_new_category.state(['!disabled'])
+            self.btn_add_category.state(['!disabled'])
         self.root.update_idletasks() # Forzar dibujado
+
+    def refresh_categories(self):
+        try:
+            categories = self.get_categories_use_case.execute()
+        except Exception:
+            categories = []
+        self.combo_categories["values"] = categories
+        if categories:
+            self.combo_categories.current(0)
+        else:
+            self.combo_categories.set("")
+
+    def add_category_to_message(self):
+        manual = self.entry_new_category.get().strip()
+        selected = self.combo_categories.get().strip()
+        chosen = manual or selected
+
+        normalized = normalize_hashtag(chosen)
+        if not normalized:
+            messagebox.showwarning("Aviso", "Selecciona una categoría o escribe una nueva válida.")
+            return
+
+        try:
+            # Solo actualizamos el catálogo JSON; no tocamos el mensaje.
+            self.upsert_categories_use_case.execute(post_text="", manual_category=normalized)
+        except Exception as e:
+            messagebox.showwarning("Aviso", f"No se pudo actualizar el catálogo: {e}")
+        finally:
+            self.refresh_categories()
+            self.entry_new_category.delete(0, tk.END)
 
     def start_generation(self):
         url = self.url_entry.get().strip()
@@ -343,9 +408,9 @@ class AppGUI:
             self.update_image_preview()
             messagebox.showinfo("Imagen", "Imagen local añadida a la cola.")
 
-    def _show_error(self, ExceptionObj):
+    def _show_error(self, exception_obj):
         self.set_status("Error crítico.", block_ui=False)
-        messagebox.showerror("Error Interno", f"Fallo:\n{str(ExceptionObj)}")
+        messagebox.showerror("Error Interno", f"Fallo:\n{str(exception_obj)}")
 
     # Se ha eliminado el bloque de copy_to_clipboard a petición del usuario.
             
@@ -387,6 +452,15 @@ class AppGUI:
             self.root.after(0, self._show_error, e)
             
     def _publish_success(self):
+        texto = self.result_text.get(1.0, tk.END).strip()
+        manual = self.entry_new_category.get().strip()
+        try:
+            self.upsert_categories_use_case.execute(post_text=texto, manual_category=manual)
+        except Exception:
+            pass
+
+        self.refresh_categories()
+        self.entry_new_category.delete(0, tk.END)
         self.set_status("Publicado con éxito", block_ui=False)
         messagebox.showinfo("Éxito", "¡El chollo ha sido publicado correctamente!")
         self.status_var.set("  🚀 Mensaje publicado en el canal.")
@@ -465,7 +539,7 @@ class AppGUI:
 def main():
     # Usar Window de ttkbootstrap para activar el sistema de temas dinámico
     root = ttk.Window(themename="darkly")
-    app = AppGUI(root)
+    AppGUI(root)
     root.mainloop()
 
 if __name__ == "__main__":

@@ -21,6 +21,12 @@ class Config:
     TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
     TELEGRAM_ADMIN_CHANNEL_ID: str = os.getenv("TELEGRAM_ADMIN_CHANNEL_ID", os.getenv("TELEGRAM_CHANNEL_ID", ""))
     TELEGRAM_MAIN_CHANNEL_ID: str = os.getenv("TELEGRAM_MAIN_CHANNEL_ID", "")
+    TELEGRAM_USER_API_ID: str = os.getenv("TELEGRAM_USER_API_ID", "")
+    TELEGRAM_USER_API_HASH: str = os.getenv("TELEGRAM_USER_API_HASH", "")
+    TELEGRAM_USER_SESSION: str = os.getenv("TELEGRAM_USER_SESSION", "telegram_user")
     
     # OpenAI Config para copys atractivos
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
+
+    # Categorías/hashtags
+    CATEGORIES_FILE_PATH: str = os.getenv("CATEGORIES_FILE_PATH", "data/categories.json")

@@ -67,3 +67,72 @@ class GPTService:
             logger.error(f"Error procesando el copy con OpenAI: {e}")
             # Si falla GPT (ej. se cae la red o API Key mal configurada), usamos plan B seguro
             return features[0]
+
+    def seleccionar_categorias(self, titulo: str, descripcion_resumida: str, categorias_disponibles: list[str]) -> list[str]:
+        """
+        Dado un título y una breve descripción del producto, pide a GPT que escoja
+        1 a 3 categorías de entre las ya existentes en el JSON.
+        Nunca debe inventar categorías nuevas y el código filtrará cualquier
+        categoría que no esté en la lista proporcionada.
+        """
+        if not categorias_disponibles:
+            return []
+
+        if not self.api_key:
+            logger.warning("No se encontró OPENAI_API_KEY. No se seleccionarán categorías por IA.")
+            return []
+
+        categorias_str = " ".join(categorias_disponibles)
+        prompt = (
+            "Eres un asistente que clasifica productos tecnológicos en categorías existentes.\n"
+            "Tienes una lista de hashtags de categorías que ya están definidas para un canal de chollos en Telegram.\n\n"
+            "Tarea:\n"
+            "- Lee el título y la descripción corta de un producto.\n"
+            "- Elige de 1 a 3 hashtags de la lista proporcionada que mejor describan el producto.\n"
+            "- Usa exactamente los mismos hashtags de la lista (copiados tal cual), sin inventar ninguno nuevo.\n"
+            "- Prioriza las categorías más específicas.\n\n"
+            "Formato de respuesta:\n"
+            "- Devuelve SOLO una línea con los hashtags separados por espacios, por ejemplo:\n"
+            "  #Monitores #Gaming\n\n"
+            "Lista de categorías disponibles:\n"
+            f"{categorias_str}\n\n"
+            "Producto a clasificar:\n"
+            f"Título: {titulo}\n"
+            f"Descripción: {descripcion_resumida}\n"
+        )
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "model": "gpt-4o-mini",
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "Eres un clasificador de productos. Solo puedes usar las categorías proporcionadas."
+                },
+                {"role": "user", "content": prompt},
+            ],
+            "temperature": 0.2,
+        }
+
+        try:
+            response = requests.post(self.url, headers=headers, json=payload, timeout=20)
+            response.raise_for_status()
+            data = response.json()
+            raw = data["choices"][0]["message"]["content"].strip()
+
+            # Extraemos hashtags de la respuesta y filtramos por los permitidos
+            tokens = raw.replace(",", " ").split()
+            candidatos = [t for t in tokens if t.startswith("#")]
+
+            permitidas = set(categorias_disponibles)
+            seleccionadas = [t for t in candidatos if t in permitidas]
+
+            # Limitamos a máximo 3 por simplicidad
+            return seleccionadas[:3]
+        except Exception as e:
+            logger.error(f"Error seleccionando categorías con OpenAI: {e}")
+            return []

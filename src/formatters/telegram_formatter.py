@@ -63,11 +63,7 @@ def format_telegram_message(product: ProductInfo) -> str:
         except Exception:
             mensaje += f"⚠️ Finaliza el {product.fin_oferta[:10]}\n\n"
             
-    # Opcional: Generación de categoría
-    categoria = product.categoria.split(" > ")[-1] if product.categoria else "CategoriaAutogenerada"
-    tag = categoria.replace(" ", "").replace(",", "")
-    mensaje += f"#{tag}\n"
-    
+    # La categoría/hashtags se añaden posteriormente (por GeneratePostUseCase)
     return mensaje
 
 def format_text_with_custom_emojis(text: str) -> dict:
