@@ -262,7 +262,7 @@ class AppGUI:
             self.btn_publish.state(['!disabled'])
             self.combo_direct_target.state(['!disabled'])
             self.btn_schedule.state(['!disabled'])
-            self.combo_categories.state(['readonly'])
+            self.combo_categories.state(['!disabled', 'readonly'])
             self.entry_new_category.state(['!disabled'])
             self.btn_add_category.state(['!disabled'])
         self.root.update_idletasks() # Forzar dibujado

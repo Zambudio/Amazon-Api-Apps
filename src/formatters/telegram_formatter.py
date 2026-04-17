@@ -59,9 +59,9 @@ def format_telegram_message(product: ProductInfo) -> str:
             dt = datetime.fromisoformat(iso_str)
             meses = ["", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
             fecha_str = f"{dt.day} de {meses[dt.month]}"
-            mensaje += f"⚠️ Finaliza el {fecha_str}\n\n"
+            mensaje += f"⚠️ Finaliza el {fecha_str}\n"
         except Exception:
-            mensaje += f"⚠️ Finaliza el {product.fin_oferta[:10]}\n\n"
+            mensaje += f"⚠️ Finaliza el {product.fin_oferta[:10]}\n"
             
     # La categoría/hashtags se añaden posteriormente (por GeneratePostUseCase)
     return mensaje
