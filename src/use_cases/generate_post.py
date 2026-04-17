@@ -17,6 +17,26 @@ class GeneratePostUseCase:
         self.gpt_service = gpt_service
         self.category_repository = JsonCategoryRepository(Config.CATEGORIES_FILE_PATH)
         
+    def _fallback_select_categories(self, text: str, available: list[str]) -> list[str]:
+        text_lower = text.lower()
+        selected: list[str] = []
+
+        for category in available:
+            normalized = normalize_hashtag(category)
+            if not normalized:
+                continue
+
+            keyword = normalized.lstrip("#").lower()
+            if not keyword:
+                continue
+
+            if keyword in text_lower and normalized not in selected:
+                selected.append(normalized)
+                if len(selected) >= 2:
+                    break
+
+        return selected
+
     def execute(self, url_or_asin: str) -> dict:
         """
         Ejecuta el flujo principal y retorna el mensaje formateado 
@@ -65,7 +85,13 @@ class GeneratePostUseCase:
                 if normalized:
                     categorias_elegidas.append(normalized)
 
+            if not categorias_elegidas:
+                categorias_elegidas = self._fallback_select_categories(
+                    f"{titulo_ref} {desc_ref}",
+                    categorias_disponibles,
+                )
+
         if categorias_elegidas:
-            mensaje = f"{mensaje}\n{' '.join(categorias_elegidas)}"
+            mensaje = mensaje.rstrip("\n") + "\n\n" + " ".join(categorias_elegidas)
         
         return {"text": mensaje, "product": product_info}
