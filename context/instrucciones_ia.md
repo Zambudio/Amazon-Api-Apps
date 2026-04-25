@@ -15,11 +15,14 @@
 - **Repository Pattern:** Para el acceso a datos (`JSONCategoryRepository`), ocultando si los datos vienen de un archivo, una base de datos o una API.
 
 ## 🧪 Testing y Verificación
-- Los tests deben residir en la carpeta `tests/`.
-- Antes de modificar `amazon_api.py`, verificar que no se rompa la compatibilidad con el esquema de respuesta de la API v3.2.
-- Al modificar el `telegram_formatter.py`, probar con diferentes combinaciones de precios (oferta flash, precio mínimo histórico, sin descuento).
+- **Obligatoriedad:** Toda funcionalidad nueva o modificada debe incluir tests en la carpeta `tests/`.
+- **Cobertura:** Se deben testear los casos de uso (`use_cases`) y los servicios críticos.
+- **Herramientas:** Usar `pytest`.
 
-## 🚀 Gestión de Git y Commits
-- **Automatización:** El usuario ha otorgado permiso explícito para que, cada vez que se solicite un commit, se realice automáticamente el `git push` a la rama correspondiente.
-- **Mensajes:** Mantener la coherencia y claridad en los mensajes de commit.
+## 🚀 Gestión de Git y Documentación
+- **Automatización:** El usuario ha otorgado permiso explícito para `git push` automático tras commit.
+- **Regla Triple de Doc:** Cada cambio funcional requiere actualizar:
+    1. `AGENTS.md`.
+    2. Carpeta `docs/`.
+    3. Carpeta `context/`.
 - **Mantenimiento del Contexto:** Antes de cada commit, sugerir la actualización de los archivos en `context/`.

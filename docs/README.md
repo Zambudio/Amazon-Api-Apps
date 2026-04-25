@@ -62,14 +62,14 @@ Si necesitas cambiar de canal o de bot, edita el archivo `.env`:
 
 ---
 
-## 🛠️ Comandos de Mantenimiento
+## 🧪 Calidad y Testing
+Siguiendo los principios de Ingeniería de Software, el proyecto incluye una suite de pruebas automatizadas:
+- **Ejecutar tests:** `pytest` (desde la raíz usando el entorno virtual).
+- **Estructura:**
+  - `tests/unit`: Pruebas de lógica pura (formateadores, normalización).
+  - `tests/integration`: Pruebas de flujo de casos de uso y repositorios.
 
-### Actualizar el Ejecutable (.exe)
-Si haces cambios en el código o en el diseño de la ventana, debes volver a generar el ejecutable. Para ello, ahora usamos el archivo de configuración `.spec` que ya incluye el icono y los archivos necesarios:
-
-```bash
-pyinstaller PublicadorBuenChollo.spec --noconfirm
-```
+**Mandato de Desarrollo:** Toda funcionalidad nueva debe ir acompañada de su test. No se considera terminada una tarea sin validación.
 
 ---
 

@@ -4,13 +4,17 @@ Este archivo contiene instrucciones técnicas y mandatos críticos para agentes 
 
 ## ⚖️ Mandatos Prioritarios (Reglas de Oro)
 1.  **Arquitectura Limpia (Clean Architecture):** Respeta estrictamente la separación de capas. La lógica de negocio (`use_cases`) debe estar aislada de los detalles de implementación (UI, APIs externas).
-2.  **Código Limpio (Clean Code):** Prioriza la legibilidad, nombres descriptivos y funciones de responsabilidad única. "Cualquier tonto puede escribir código que un ordenador entienda; los buenos programadores escriben código que los humanos entienden".
-3.  **Ingeniería de Software:** Aplica principios SOLID. Prefiere composición sobre herencia. Usa inyección de dependencias para facilitar el testing.
+2.  **Código Limpio (Clean Code):** Prioriza la legibilidad, nombres descriptivos y funciones de responsabilidad única.
+3.  **Ingeniería de Software & Testing:** Toda nueva funcionalidad validada DEBE incluir su correspondiente suite de tests en la carpeta `tests/`. No se considera terminada una tarea sin verificación automatizada.
+4.  **Sincronización de Documentación (Regla Triple):** Al modificar o añadir funcionalidades, es OBLIGATORIO actualizar la documentación en:
+    *   `AGENTS.md` (Instrucciones operativas).
+    *   Carpeta `docs/` (Manuales y guías técnicas).
+    *   Carpeta `context/` (Base de conocimiento para IAs).
 
 ## 🛠️ Comandos de Desarrollo
 - **Lanzar GUI:** `python run_gui.py`
 - **Lanzar Servidor (NAS):** `uvicorn src.server.nas_api:app --host 0.0.0.0 --port 8000`
-- **Pruebas:** Ejecutar `pytest` (si existe la carpeta `tests/`).
+- **Pruebas:** Ejecutar `pytest` para validar toda la lógica de negocio.
 - **Construcción EXE:** `pyinstaller PublicadorBuenChollo.spec --noconfirm`
 - **Docker:** `docker-compose -f deploy/docker-compose.yml up --build`
 

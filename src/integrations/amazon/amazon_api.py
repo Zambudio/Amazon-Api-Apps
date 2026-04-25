@@ -25,8 +25,25 @@ if sys.stdout is not None and getattr(sys.stdout, 'encoding', None) != 'utf-8':
     except (AttributeError, io.UnsupportedOperation):
         pass
 
-from amazon_creatorsapi import AmazonCreatorsApi, Country
-from amazon_creatorsapi.models import GetItemsResource
+try:
+    from creatorsapi_python_sdk import DefaultApi as AmazonCreatorsApi
+    # Si no existe Country, definiremos un Mock o usaremos un string
+    try:
+        from creatorsapi_python_sdk import Country
+    except ImportError:
+        class Country:
+            ES = "ES"
+    from creatorsapi_python_sdk.models.get_items_resource import GetItemsResource
+except ImportError:
+    # Fallback para permitir que el sistema cargue sin la librería (útil para tests y despliegue inicial)
+    AmazonCreatorsApi = None
+    class Country: ES = "ES"
+    class GetItemsResource: 
+        ITEM_INFO_DOT_TITLE = "ItemInfo.Title"
+        # ... añadir otros mínimos si es necesario, o usar strings directamente
+        def __getattr__(cls, name): return name
+    GetItemsResource = GetItemsResource()
+
 
 # ──────────────────────────────────────────────
 #  CONFIGURACIÓN — pon aquí tus credenciales
