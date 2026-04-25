@@ -19,8 +19,7 @@
 - Antes de modificar `amazon_api.py`, verificar que no se rompa la compatibilidad con el esquema de respuesta de la API v3.2.
 - Al modificar el `telegram_formatter.py`, probar con diferentes combinaciones de precios (oferta flash, precio mínimo histórico, sin descuento).
 
-## 🚀 Mantenimiento del Contexto
-Si añades una nueva integración (ej. una nueva API de rastreo de precios) o cambias drásticamente un flujo de negocio:
-1.  Actualiza `context/arquitectura.md`.
-2.  Si hay nuevas dependencias, actualiza `requirements_server.txt` y verifica el `.spec` de PyInstaller.
-3.  **No olvides la regla de oro:** Sugiere actualizar estos archivos antes de cada commit.
+## 🚀 Gestión de Git y Commits
+- **Automatización:** El usuario ha otorgado permiso explícito para que, cada vez que se solicite un commit, se realice automáticamente el `git push` a la rama correspondiente.
+- **Mensajes:** Mantener la coherencia y claridad en los mensajes de commit.
+- **Mantenimiento del Contexto:** Antes de cada commit, sugerir la actualización de los archivos en `context/`.
