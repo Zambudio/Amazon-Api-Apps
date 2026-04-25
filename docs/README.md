@@ -54,11 +54,11 @@ Si necesitas cambiar de canal o de bot, edita el archivo `.env`:
 
 ---
 
-## 📂 Estructura de Carpetas
-- `src/`: Todo el código fuente (integraciones, servicios, interfaz).
-- `dist/`: Ubicación del programa ejecutable (.exe).
-- `.env`: Configuración secreta y tokens.
-- `run_gui.py`: Script para lanzar la interfaz desde Python.
+## 📂 Convenciones del Proyecto
+- **Clean Architecture:** Separación clara entre dominio, casos de uso e infraestructura.
+- **Documentación Junior-Friendly:** Cada archivo `.py` incluye un encabezado descriptivo y comentarios sencillos para facilitar el aprendizaje y mantenimiento por parte de desarrolladores menos experimentados.
+- **Testing:** Toda funcionalidad nueva debe incluir tests unitarios o de integración.
+- **Git:** El flujo de trabajo está automatizado para sincronizar cambios locales con GitHub tras cada commit validado.
 
 ---
 

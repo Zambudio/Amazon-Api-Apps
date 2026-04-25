@@ -1,9 +1,9 @@
 # 🛠️ Guía de Desarrollo e Instrucciones para IAs
 
 ## 🎨 Estilo de Código y Convenciones
-- **Naming:** `snake_case` para variables y funciones, `PascalCase` para clases.
-- **Docstrings:** Usar Google Style o descriptivos cortos en español para explicar el "qué" y el "por qué".
-- **Logging:** Usar el módulo `logging` de Python. Evitar `print()` en producción, especialmente en la capa de servicios y servidor.
+- **Encabezados:** Cada archivo `.py` debe iniciar con un docstring (`""" ... """`) que explique su función principal para un desarrollador junior.
+- **Comentarios:** El código debe ser autodocumentado (nombres claros). Los comentarios se reservan para explicar decisiones de diseño o lógica no evidente.
+- **Naming:** `snake_case` para variables/funciones, `PascalCase` para clases.
 
 ## 🛠️ Manejo de Errores
 1.  **Capa de Integración:** Capturar excepciones específicas de red o API y relanzarlas como excepciones de dominio o devolver `None` con un log de error claro.

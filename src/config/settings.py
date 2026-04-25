@@ -1,3 +1,10 @@
+"""
+Configuración General del Sistema
+Este archivo gestiona todas las variables de entorno, claves de API y rutas de archivos. 
+Centraliza la configuración para que el resto del programa sepa dónde encontrar datos 
+y cómo conectarse a servicios externos como Amazon o Telegram.
+"""
+
 import os
 import sys
 from pathlib import Path
@@ -6,11 +13,12 @@ from typing import Optional
 
 def _get_app_base_dir() -> Path:
     """
-    Devuelve la raíz de ejecución:
-    - Script: raíz del proyecto
-    - Ejecutable PyInstaller: carpeta del ejecutable o el directorio interno del bundle
+    Determina la carpeta raíz donde reside la aplicación. 
+    Es vital para que el programa funcione tanto si se ejecuta como código (.py) 
+    o como un archivo ejecutable (.exe) compilado con PyInstaller.
     """
     if getattr(sys, "frozen", False):
+        # Si estamos en un ejecutable .exe
         exe_dir = Path(sys.executable).resolve().parent
         if hasattr(sys, "_MEIPASS"):
             return Path(sys._MEIPASS)
@@ -20,10 +28,16 @@ def _get_app_base_dir() -> Path:
             return internal_dir
 
         return exe_dir
+    # Si estamos ejecutando el script .py directamente
     return Path(__file__).resolve().parents[2]
 
 
 def _resolve_runtime_path(value: str, default_relative: str) -> str:
+    """
+    Resuelve una ruta de archivo para que sea válida en tiempo de ejecución.
+    Busca el archivo en varias carpetas posibles para asegurar que se encuentre 
+    incluso si el directorio de trabajo cambia.
+    """
     base_dir = _get_app_base_dir()
     project_root = Path(__file__).resolve().parents[2]
     raw = (value or "").strip()
@@ -39,8 +53,7 @@ def _resolve_runtime_path(value: str, default_relative: str) -> str:
         base_dir.parent,
     ]
 
-    # Priorizamos el primer archivo existente para evitar catálogos "vacíos"
-    # cuando cambia el cwd entre script y ejecutable.
+    # Priorizamos el primer archivo existente para evitar errores al mover la aplicación.
     for base in search_bases:
         candidate = (base / relative).resolve()
         if candidate.exists():
@@ -49,6 +62,10 @@ def _resolve_runtime_path(value: str, default_relative: str) -> str:
     return str((base_dir / relative).resolve())
 
 def _resolve_data_path(value: str, default_relative: str) -> str:
+    """
+    Similar a resolve_runtime_path pero optimizado para archivos de datos (JSON, etc.)
+    que suelen estar en la carpeta 'data/'.
+    """
     raw = (value or "").strip()
     if raw:
         return _resolve_runtime_path(raw, default_relative)
@@ -61,6 +78,10 @@ def _resolve_data_path(value: str, default_relative: str) -> str:
 
 
 def load_config():
+    """
+    Carga las variables de entorno desde el archivo .env.
+    Busca el archivo en múltiples ubicaciones comunes.
+    """
     try:
         from dotenv import load_dotenv
 
@@ -86,16 +107,19 @@ def load_config():
     except ImportError:
         pass
 
-# Ejecutamos al importar
+# Ejecutamos la carga de configuración al importar este módulo
 load_config()
 
 class Config:
-    # Amazon API Config
+    """
+    Clase contenedora de todas las constantes y configuraciones del proyecto.
+    """
+    # Configuración de la API de Amazon (Credenciales para obtener productos)
     AMAZON_CLIENT_ID: str = os.getenv("AMAZON_CLIENT_ID", "")
     AMAZON_CLIENT_SECRET: str = os.getenv("AMAZON_CLIENT_SECRET", "")
     AMAZON_AFFILIATE_TAG: str = os.getenv("AMAZON_AFFILIATE_TAG", "buenchollo0b-21")
     
-    # Telegram Config
+    # Configuración de Telegram (Tokens para enviar mensajes y leer canales)
     TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
     TELEGRAM_ADMIN_CHANNEL_ID: str = os.getenv("TELEGRAM_ADMIN_CHANNEL_ID", os.getenv("TELEGRAM_CHANNEL_ID", ""))
     TELEGRAM_MAIN_CHANNEL_ID: str = os.getenv("TELEGRAM_MAIN_CHANNEL_ID", "")
@@ -106,10 +130,10 @@ class Config:
         "runtime/telegram_user"
     )
     
-    # OpenAI Config para copys atractivos
+    # Configuración de OpenAI para la generación de textos creativos
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
 
-    # Categorías/hashtags
+    # Rutas a archivos locales de almacenamiento
     CATEGORIES_FILE_PATH: str = _resolve_data_path(
         os.getenv("CATEGORIES_FILE_PATH", ""),
         "data/categories.json"

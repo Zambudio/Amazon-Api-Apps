@@ -1,3 +1,11 @@
+"""
+Servidor de Programación (NAS API)
+Este archivo es el 'Cerebro' que se ejecuta en el servidor o NAS (Synology). 
+Recibe las publicaciones programadas desde la interfaz de Windows, las guarda 
+en una base de datos local y un 'guardián' (daemon) las publica automáticamente 
+en Telegram cuando llega la hora acordada.
+"""
+
 import os
 import sys
 import time
@@ -14,6 +22,7 @@ from src.config.settings import Config
 
 app = FastAPI(title="BuenChollo NAS Scheduler API")
 
+# Directorios para guardar la base de datos y las imágenes subidas
 DB_DIR = "nas_data"
 DB_FILE = f"{DB_DIR}/borradores.db"
 IMG_DIR = f"{DB_DIR}/images"
@@ -22,6 +31,7 @@ os.makedirs(DB_DIR, exist_ok=True)
 os.makedirs(IMG_DIR, exist_ok=True)
 
 def init_db():
+    """Crea la tabla de posts programados si no existe."""
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS posts (
@@ -38,10 +48,13 @@ def init_db():
 init_db()
 
 def publisher_daemon():
-    """Hilo secundario que revisa la BD cada minuto y publica si es la hora."""
+    """
+    Hilo secundario (Guardián) que se despierta cada minuto. 
+    Busca en la base de datos si hay algún post cuya hora de publicación 
+    ya haya llegado y lo envía a Telegram.
+    """
     print("🤖 Iniciando Motor de Publicación en Segundo Plano...")
     
-    # Instanciamos el publicador general
     try:
         publisher = PublisherService()
     except Exception as e:
@@ -52,25 +65,25 @@ def publisher_daemon():
         try:
             conn = sqlite3.connect(DB_FILE)
             c = conn.cursor()
-            # Hora actual exacta del NAS
+            # Obtenemos la hora actual del servidor
             now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             
-            # Buscar todos los que están 'pending' y cuya hora ya es pasada o igual a la actual
+            # Buscamos posts pendientes que ya deban publicarse
             c.execute("SELECT id, text, target, photo_url FROM posts WHERE status='pending' AND schedule_time <= ?", (now_str,))
             rows = c.fetchall()
             
             for row in rows:
                 p_id, text, target, photo_url = row
-                print(f"🚀 Publicando Post ID {p_id} programado para {now_str} en {target}...")
+                print(f"🚀 Publicando Post ID {p_id}...")
                 
                 try:
+                    # Publicamos según el canal elegido
                     if target == "main":
                         publisher.publish_to_main(text, photo_url)
                     else:
                         publisher.publish_to_admin(text, photo_url)
                     
                     c.execute("UPDATE posts SET status='published' WHERE id=?", (p_id,))
-                    print(f"✅ Post ID {p_id} Publicado con Éxito.")
                 except Exception as e:
                     print(f"❌ Error publicando Post ID {p_id}: {e}")
                     c.execute("UPDATE posts SET status='error' WHERE id=?", (p_id,))
@@ -78,12 +91,12 @@ def publisher_daemon():
             conn.commit()
             conn.close()
         except Exception as e:
-            print(f"❌ Error Crítico en el Daemon de base de datos: {e}")
+            print(f"❌ Error Crítico: {e}")
             
-        # Esperamos 60 segundos hasta la próxima comprobación
+        # Esperamos 60 segundos antes de volver a comprobar
         time.sleep(60)
 
-# Lanzar el guardián del tiempo
+# Lanzamos el guardián en un hilo separado para que no bloquee la API
 threading.Thread(target=publisher_daemon, daemon=True).start()
 
 
@@ -91,13 +104,17 @@ threading.Thread(target=publisher_daemon, daemon=True).start()
 async def schedule_post(
     text: str = Form(...),
     target: str = Form(...),
-    schedule_time: str = Form(...),  # Formato YYYY-MM-DD HH:MM:00
+    schedule_time: str = Form(...),  # Formato: YYYY-MM-DD HH:MM:00
     photo_url: str = Form(""),
     photo: UploadFile = File(None)
 ):
+    """
+    Endpoint de la API que recibe un nuevo chollo para programar. 
+    Puede recibir una URL de imagen o el archivo físico de la imagen.
+    """
     final_photo_url = photo_url
     
-    # Si el cliente (Windows) envía una foto física, la guardamos en el NAS
+    # Si el usuario subió una foto propia, la guardamos localmente en el NAS
     if photo and photo.filename:
         file_ext = photo.filename.split('.')[-1]
         timestamp = int(time.time())
@@ -108,7 +125,7 @@ async def schedule_post(
             
         final_photo_url = os.path.abspath(file_path)
 
-    # Insertamos en la BD usando hora UTC local del NAS
+    # Guardamos todo en la base de datos como 'pending' (pendiente)
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     c.execute("INSERT INTO posts (text, target, photo_url, schedule_time, status) VALUES (?, ?, ?, ?, 'pending')",
@@ -116,8 +133,9 @@ async def schedule_post(
     conn.commit()
     conn.close()
     
-    return {"status": "ok", "message": "Publicación guardada y programada en el NAS"}
+    return {"status": "ok", "message": "Publicación programada correctamente"}
 
 @app.get("/api/status")
 async def get_status():
-    return {"status": "El Servidor NAS de BuenChollo está vivo y esperando chollos."}
+    """Endpoint simple para comprobar que el servidor está encendido."""
+    return {"status": "Servidor NAS de BuenChollo activo."}

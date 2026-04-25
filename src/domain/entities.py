@@ -1,18 +1,26 @@
-from dataclasses import dataclass
+"""
+Entidades de Dominio
+Este archivo define los modelos de datos principales (clases) que se mueven 
+por todo el sistema. Sirve para que todas las capas del programa hablen el 
+mismo idioma y entiendan qué es un Producto o un Borrador de Post.
+"""
+
+from dataclasses import dataclass, field
 from typing import Optional, List
 
-# Reutilizamos el modelo de datos de Amazon API por ahora para no romper su lógica,
-# pero lo importamos aquí para que el resto del sistema dependa de "domain" y no 
-# directamente de "integrations", facilitando un futuro desacoplamiento.
+# Reutilizamos el modelo de datos de Amazon API para mantener la compatibilidad.
+# Esto asegura que la información extraída de Amazon se ajuste a nuestro sistema.
 from src.integrations.amazon.amazon_api import ProductInfo
 
 @dataclass
 class PostDraft:
-    """Entidad de dominio que representa un borrador de publicación,
-    sirviendo como puente antes de enviarlo a Telegram o a una base de datos.
+    """
+    Representa un borrador de mensaje listo para ser publicado en Telegram.
+    Contiene el texto ya formateado, la imagen seleccionada y su estado actual.
     """
     id: str
     product_asin: str
     formatted_text: str
     image_url: Optional[str] = None
-    status: str = "DRAFT" # DRAFT, PUBLISHED, REJECTED
+    # Estados posibles: DRAFT (Borrador), PUBLISHED (Publicado), REJECTED (Rechazado)
+    status: str = "DRAFT" 

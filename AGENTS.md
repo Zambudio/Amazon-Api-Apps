@@ -3,13 +3,11 @@
 Este archivo contiene instrucciones técnicas y mandatos críticos para agentes de IA que trabajen en este repositorio.
 
 ## ⚖️ Mandatos Prioritarios (Reglas de Oro)
-1.  **Arquitectura Limpia (Clean Architecture):** Respeta estrictamente la separación de capas. La lógica de negocio (`use_cases`) debe estar aislada de los detalles de implementación (UI, APIs externas).
-2.  **Código Limpio (Clean Code):** Prioriza la legibilidad, nombres descriptivos y funciones de responsabilidad única.
-3.  **Ingeniería de Software & Testing:** Toda nueva funcionalidad validada DEBE incluir su correspondiente suite de tests en la carpeta `tests/`. No se considera terminada una tarea sin verificación automatizada.
-4.  **Sincronización de Documentación (Regla Triple):** Al modificar o añadir funcionalidades, es OBLIGATORIO actualizar la documentación en:
-    *   `AGENTS.md` (Instrucciones operativas).
-    *   Carpeta `docs/` (Manuales y guías técnicas).
-    *   Carpeta `context/` (Base de conocimiento para IAs).
+1.  **Arquitectura Limpia (Clean Architecture):** Respeta estrictamente la separación de capas.
+2.  **Código Limpio (Clean Code):** Prioriza legibilidad y nombres descriptivos.
+3.  **Documentación Junior-Friendly:** Todo archivo `.py` DEBE empezar con un comentario de encabezado que explique de forma sencilla qué hace el archivo. Los comentarios internos deben explicar el "por qué" de la lógica compleja.
+4.  **Ingeniería de Software & Testing:** Toda nueva funcionalidad validada DEBE incluir tests en `tests/`.
+5.  **Sincronización de Documentación (Regla Triple):** Actualizar siempre `AGENTS.md`, `docs/` y `context/`.
 
 ## 🛠️ Comandos de Desarrollo
 - **Lanzar GUI:** `python run_gui.py`

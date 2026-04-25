@@ -1,3 +1,10 @@
+"""
+Servicio de Inteligencia Artificial (OpenAI)
+Este archivo gestiona la comunicación con ChatGPT para dos tareas clave:
+1. Resumir descripciones de productos para que sean atractivas.
+2. Elegir automáticamente la categoría adecuada de un producto.
+"""
+
 import json
 import logging
 import requests
@@ -7,8 +14,8 @@ logger = logging.getLogger(__name__)
 
 class GPTService:
     """
-    Servicio para conectar con la API de OpenAI (ChatGPT) sin requerir instalar 
-    el paquete oficial de 'openai', para máxima compatibilidad usando 'requests'.
+    Se comunica con OpenAI mediante peticiones HTTP simples.
+    Esto evita tener que instalar librerías adicionales y facilita el despliegue.
     """
     
     def __init__(self):
@@ -17,31 +24,24 @@ class GPTService:
 
     def sintetizar_descripcion(self, features: list[str]) -> str:
         """
-        Toma una lista de características crudas de un producto y le pide a GPT 
-        que las sintetice en un pequeño bloque de texto atractivo.
+        Pide a la IA que redacte un resumen persuasivo de 2 o 3 líneas 
+        basándose en las características técnicas del producto.
         """
         if not features:
             return "Sin descripción técnica adicional."
             
         if not self.api_key:
-            # Fallback seguro si no hay API Key configurada
-            logger.warning("No se encontró OPENAI_API_KEY. Usando primera línea como fallback.")
+            logger.warning("No se encontró OPENAI_API_KEY. Usando fallback.")
             return features[0]
             
         full_text = "\n- ".join(features)
         
+        # El 'prompt' es la instrucción que le damos a la IA
         prompt = (
-            "Eres un experto copywriter comercial para un canal de chollos tecnológicos en Telegram.\n"
-            "Tu objetivo es leer las características técnicas de un producto y "
-            "sintetizarlas en un único bloque de texto MUY breve, muy atractivo y persuasivo.\n\n"
-            "Restricciones:\n"
-            "- Máximo 2 o 3 líneas cortas.\n"
-            "- Prohibido empezar con muletillas como 'Descubre...', 'Presentamos...', 'Eleva tu...', 'Transforma tu...', 'Experimenta el...'.\n"
-            "- Empieza directamente hablando del producto o de su beneficio principal.\n"
-            "- No uses viñetas (- o *), redáctalo como un pequeño párrafo fluido y directo.\n"
-            "- No incluyas hashtags ni menciones al canal.\n"
-            "- No inventes características que no estén en el texto original.\n\n"
-            "Características originales:\n- " + full_text
+            "Eres un experto copywriter para un canal de chollos en Telegram.\n"
+            "Sintetiza estas características en un bloque de texto MUY breve y persuasivo.\n"
+            "Máximo 2 o 3 líneas. No uses muletillas. Empieza directo al grano.\n\n"
+            "Características:\n- " + full_text
         )
 
         headers = {
@@ -50,9 +50,9 @@ class GPTService:
         }
         
         payload = {
-            "model": "gpt-4o-mini", # Modelo más rápido y barato, perfecto para tareas cortas
+            "model": "gpt-4o-mini", # Modelo económico y muy rápido
             "messages": [
-                {"role": "system", "content": "Eres un asistente de redacción para comercio electrónico. Escribes corto, directo y tentador."},
+                {"role": "system", "content": "Eres un redactor de chollos. Escribes corto y directo."},
                 {"role": "user", "content": prompt}
             ],
             "temperature": 0.6
@@ -64,78 +64,43 @@ class GPTService:
             data = response.json()
             return data["choices"][0]["message"]["content"].strip()
         except Exception as e:
-            logger.error(f"Error procesando el copy con OpenAI: {e}")
-            # Si falla GPT (ej. se cae la red o API Key mal configurada), usamos plan B seguro
+            logger.error(f"Error con OpenAI: {e}")
             return features[0]
 
     def seleccionar_categorias(self, titulo: str, descripcion_resumida: str, categorias_disponibles: list[str]) -> list[str]:
         """
-        Dado un título y una breve descripción del producto, pide a GPT que escoja
-        1 o 2 categorías de entre las ya existentes en el JSON.
-        Si con una categoría basta, debe preferir regresar solo una.
-        Nunca debe inventar categorías nuevas y el código filtrará cualquier
-        categoría que no esté en la lista proporcionada.
+        Analiza el producto y elige la mejor categoría (hashtag) de entre una lista permitida.
         """
-        if not categorias_disponibles:
-            return []
-
-        if not self.api_key:
-            logger.warning("No se encontró OPENAI_API_KEY. No se seleccionarán categorías por IA.")
+        if not categorias_disponibles or not self.api_key:
             return []
 
         categorias_str = " ".join(categorias_disponibles)
         prompt = (
-            "Eres un asistente que clasifica productos tecnológicos en categorías existentes.\n"
-            "Tienes una lista de hashtags de categorías que ya están definidas para un canal de chollos en Telegram.\n\n"
-            "Tarea:\n"
-            "- Lee el título y la descripción corta de un producto.\n"
-            "- Elige 1 o 2 hashtags de la lista proporcionada que mejor describan el producto.\n"
-            "- Si con un solo hashtag es suficiente, prefierelo y devuelve solo uno.\n"
-            "- Usa exactamente los mismos hashtags de la lista (copiados tal cual), sin inventar ninguno nuevo.\n"
-            "- Prioriza las categorías más específicas.\n\n"
-            "Formato de respuesta:\n"
-            "- Devuelve SOLO una línea con los hashtags separados por espacios, por ejemplo:\n"
-            "  #Monitores #Gaming\n"
-            "- Si un hashtag basta, responde con una sola etiqueta.\n\n"
-            "Lista de categorías disponibles:\n"
-            f"{categorias_str}\n\n"
-            "Producto a clasificar:\n"
-            f"Título: {titulo}\n"
-            f"Descripción: {descripcion_resumida}\n"
+            "Elige 1 o 2 hashtags de esta lista que mejor describan el producto.\n"
+            "Solo puedes usar hashtags de la lista. Responde solo con los hashtags.\n\n"
+            f"Lista: {categorias_str}\n"
+            f"Producto: {titulo}\n{descripcion_resumida}"
         )
-
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
 
         payload = {
             "model": "gpt-4o-mini",
             "messages": [
-                {
-                    "role": "system",
-                    "content": "Eres un clasificador de productos. Solo puedes usar las categorías proporcionadas."
-                },
+                {"role": "system", "content": "Solo puedes usar las categorías proporcionadas."},
                 {"role": "user", "content": prompt},
             ],
-            "temperature": 0.2,
+            "temperature": 0.2, # Baja temperatura para que sea más determinista
         }
 
         try:
-            response = requests.post(self.url, headers=headers, json=payload, timeout=20)
+            response = requests.post(self.url, headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json"
+            }, json=payload, timeout=20)
             response.raise_for_status()
-            data = response.json()
-            raw = data["choices"][0]["message"]["content"].strip()
+            raw = response.json()["choices"][0]["message"]["content"].strip()
 
-            # Extraemos hashtags de la respuesta y filtramos por los permitidos
             tokens = raw.replace(",", " ").split()
-            candidatos = [t for t in tokens if t.startswith("#")]
-
             permitidas = set(categorias_disponibles)
-            seleccionadas = [t for t in candidatos if t in permitidas]
-
-            # Limitamos a máximo 2 hashtags, prefiriendo 1 si con uno basta
-            return seleccionadas[:2]
-        except Exception as e:
-            logger.error(f"Error seleccionando categorías con OpenAI: {e}")
+            return [t for t in tokens if t in permitidas][:2]
+        except Exception:
             return []

@@ -1,12 +1,19 @@
+"""
+Herramienta CLI: Generador de Posts
+Este script permite generar un post de Telegram directamente desde la consola 
+sin abrir la interfaz gráfica. Es ideal para pruebas rápidas o para integrar 
+en otros scripts automatizados.
+"""
+
 import sys
 import argparse
+import os
 
 # Asegurar que se puede importar independientemente de cómo se llame al script
-import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 from src.use_cases.generate_post import GeneratePostUseCase
-from src.config.settings import Config  # Forzar carga de variables de entorno tempranamente
+from src.config.settings import Config
 
 def main():
     parser = argparse.ArgumentParser(description="Generador de Posts para Telegram desde Amazon.")
@@ -16,11 +23,12 @@ def main():
     
     print(f"Iniciando procesamiento para: {args.url_o_asin}...")
     
-    # Instanciamos el caso de uso
+    # Instanciamos el caso de uso principal
     use_case = GeneratePostUseCase()
     
-    # Ejecutamos el flujo principal
-    mensaje = use_case.execute(args.url_o_asin)
+    # Ejecutamos el flujo de generación
+    resultado = use_case.execute(args.url_o_asin)
+    mensaje = resultado.get("text")
     
     if mensaje:
         print("\n" + "="*50)

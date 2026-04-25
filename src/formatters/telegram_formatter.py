@@ -1,9 +1,16 @@
+"""
+Formateador de Mensajes para Telegram
+Este archivo se encarga de convertir la información técnica de un producto 
+en un mensaje bonito y atractivo para los usuarios de Telegram. Añade 
+emojis, calcula ahorros y prepara el texto para que incluya iconos premium.
+"""
+
 from src.domain.entities import ProductInfo
 
 def format_telegram_message(product: ProductInfo) -> str:
     """
-    Toma un objeto ProductInfo y devuelve el texto formateado
-    tal como se espera en el canal de Telegram, extraído del comportamiento de Consulta.py
+    Construye el texto del post a partir de los datos del producto de Amazon.
+    Añade el título, precios, porcentajes de descuento y la descripción resumida.
     """
     title = product.titulo or "Título no disponible"
     moneda = "€" if product.moneda == "EUR" else product.moneda
@@ -20,7 +27,7 @@ def format_telegram_message(product: ProductInfo) -> str:
     
     url = product.url_afiliado or "URL_NO_DISPONIBLE"
     
-    # Tomar la descripción sintetizada por IA si existe, sino la primera característica o nada
+    # Prioridad: 1. Descripción resumida por GPT, 2. Primera característica de Amazon, 3. Texto genérico
     if product.descripcion_gpt:
         description = product.descripcion_gpt.lstrip().replace('\t', ' ').replace('\n', ' ').strip()
     elif product.descripcion:
@@ -28,10 +35,9 @@ def format_telegram_message(product: ProductInfo) -> str:
     else:
         description = "Sin descripción técnica adicional."
         
-    # Limpiar cualquier separador raro extra introducido por la IA
     description = description.lstrip()
         
-    # Usando los emojis de la imagen de ejemplo de Consulta.py
+    # Construcción del cuerpo del mensaje con emojis visuales
     mensaje = f"🍄 {title}\n\n"
     if product.precio_anterior:
         mensaje += f"💶 Precio: {price} (antes {list_price})\n"
@@ -47,14 +53,15 @@ def format_telegram_message(product: ProductInfo) -> str:
             mensaje += "\n"
             
     mensaje += f"🛒 {url}\n\n"
-    # Pegamos el emoji directamente al texto sin espacio intermedio para compensar el "hueco" del custom emoji
+    # Pegamos el emoji directamente al texto para que el diseño premium se vea compacto
     clean_desc = description.lstrip()
     mensaje += f"✏️{clean_desc}\n\n"
     
+    # Cálculo de la fecha de fin de oferta si está disponible
     if product.fin_oferta:
         try:
             from datetime import datetime
-            # Reemplazar Z por +00:00 para parseo compatible y extraer la fecha
+            # Convertimos el formato de fecha de Amazon a algo legible en español
             iso_str = product.fin_oferta.replace('Z', '+00:00')
             dt = datetime.fromisoformat(iso_str)
             meses = ["", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
@@ -63,34 +70,33 @@ def format_telegram_message(product: ProductInfo) -> str:
         except Exception:
             mensaje += f"⚠️ Finaliza el {product.fin_oferta[:10]}\n"
             
-    # La categoría/hashtags se añaden posteriormente (por GeneratePostUseCase)
     return mensaje
 
 def format_text_with_custom_emojis(text: str) -> dict:
     """
-    Toma un texto plano final (con emojis nativos incluidos) y calcula 
-    los offsets en UTF-16 requeridos por Telegram para generar 'entities' premium.
-    Retorna un diccionario de la forma {"text": str, "entities": [...]}.
+    Transforma un texto normal en uno compatible con 'Custom Emojis' de Telegram.
+    Calcula exactamente en qué posición está cada emoji para decirle a Telegram 
+    que lo reemplace por una versión animada o premium.
     """
     from src.integrations.telegram.emoji_mapper import CUSTOM_EMOJI_MAP
     
     entities = []
     
-    # Telegram espera los offsets de las 'entities' calculados no en caracteres sueltos,
-    # sino en unidades de código (code units) UTF-16.
+    # IMPORTANTE: Telegram no cuenta caracteres simples (1, 2, 3...), sino 'unidades UTF-16'. 
+    # Algunos emojis ocupan más de una unidad, por lo que usamos encode('utf-16-le') 
+    # para obtener el offset exacto que la API de Telegram requiere.
     
     for emoji_char, custom_id in CUSTOM_EMOJI_MAP.items():
         start = 0
         while True:
-            # Buscamos cada ocurrencia del emoji en el texto
+            # Buscamos dónde aparece el emoji en el texto
             idx = text.find(emoji_char, start)
             if idx == -1:
                 break
                 
-            # Extraemos la subcadena hasta el emoji
             prefix = text[:idx]
             
-            # El offset en UTF-16 es la cantidad de bytes en utf-16-le dividido entre 2
+            # Calculamos la posición real en el formato que entiende Telegram
             offset = len(prefix.encode('utf-16-le')) // 2
             length = len(emoji_char.encode('utf-16-le')) // 2
             
@@ -103,7 +109,7 @@ def format_text_with_custom_emojis(text: str) -> dict:
             
             start = idx + len(emoji_char)
 
-    # Añadir negrita a todo el texto
+    # Añadimos una entidad para que TODO el mensaje aparezca en negrita
     total_length = len(text.encode('utf-16-le')) // 2
     entities.append({
         "type": "bold",

@@ -1,8 +1,16 @@
-import os
-import sys
+"""
+Lanzador de la Interfaz Gráfica (GUI)
+Este archivo es el punto de inicio para ejecutar la aplicación visual en Windows. 
+Se encarga de configurar las rutas necesarias para que Python encuentre los módulos 
+del proyecto y abre la ventana principal para el usuario.
+"""
 
-# Asegurar que estamos en el directorio base correcto
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+import sys
+import os
+
+# Asegurar que el directorio raíz esté en el path para poder importar desde 'src'
+# Esto permite que, sin importar desde dónde se ejecute el script, siempre encuentre la carpeta 'src'
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from src.ui.main_gui import main
 
