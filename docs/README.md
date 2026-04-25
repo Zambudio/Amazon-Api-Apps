@@ -58,7 +58,7 @@ Si necesitas cambiar de canal o de bot, edita el archivo `.env`:
 - **Clean Architecture:** Separación clara entre dominio, casos de uso e infraestructura.
 - **Documentación Junior-Friendly:** Cada archivo `.py` incluye un encabezado descriptivo y comentarios sencillos para facilitar el aprendizaje y mantenimiento por parte de desarrolladores menos experimentados.
 - **Testing:** Toda funcionalidad nueva debe incluir tests unitarios o de integración.
-- **Git:** El flujo de trabajo está automatizado para sincronizar cambios locales con GitHub tras cada commit validado.
+- **Git:** El flujo de trabajo requiere confirmación manual para cada commit y push, garantizando que solo se suba código verificado.
 
 ---
 

@@ -20,7 +20,7 @@
 - **Herramientas:** Usar `pytest`.
 
 ## 🚀 Gestión de Git y Documentación
-- **Automatización:** El usuario ha otorgado permiso explícito para `git push` automático tras commit.
+- **Control Manual:** NO realizar commits ni pushes de forma automática. Se requiere confirmación explícita del usuario.
 - **Regla Triple de Doc:** Cada cambio funcional requiere actualizar:
     1. `AGENTS.md`.
     2. Carpeta `docs/`.

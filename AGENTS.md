@@ -26,8 +26,9 @@ Este archivo contiene instrucciones técnicas y mandatos críticos para agentes 
 - `context/`: Documentación específica para el contexto de la IA.
 
 ## 🚀 Flujo de Git y Commits
-- **Permiso de Push:** El usuario ha autorizado el `git push` automático tras cada commit solicitado.
-- **Sugerencia de Contexto:** Antes de hacer commit, sugiere SIEMPRE actualizar los archivos en la carpeta `context/`.
+- **Confirmación Obligatoria:** NO realizar `git commit` ni `git push` sin la autorización explícita del usuario para cada caso.
+- **Validación Previa:** Antes de solicitar un commit, el agente debe asegurar que la funcionalidad está terminada y los tests pasan.
+- **Sugerencia de Contexto:** Antes de cada commit, sugerir SIEMPRE la actualización de los archivos en la carpeta `context/`.
 - **Formato:** Mensajes de commit claros y concisos en español.
 
 ## 🐍 Guía de Estilo Python
