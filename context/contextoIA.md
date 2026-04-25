@@ -21,6 +21,7 @@ El sistema tiene dos modos de operación:
 ## 📂 Estructura del Proyecto (Limpia)
 - `src/`: Código fuente (Lógica de negocio, UI, Integraciones).
 - `docs/`: Documentación del proyecto (README, mandatos de la IA).
+- `AGENTS.md`: Manual operativo técnico para agentes de IA (Raíz).
 - `deploy/`: Archivos de Docker, NAS y requisitos de servidor.
 - `assets/`: Recursos visuales (Logos, iconos).
 - `data/`: Bases de datos JSON y catálogos.
