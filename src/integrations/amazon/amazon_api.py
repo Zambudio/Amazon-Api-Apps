@@ -9,6 +9,7 @@ import sys
 import json
 import os
 import re
+import logging
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -27,28 +28,28 @@ if sys.stdout is not None and getattr(sys.stdout, 'encoding', None) != 'utf-8':
 
 # Intentamos importar la SDK de Amazon. Si no está, usamos clases "Mock" para que el programa no explote.
 try:
+    from creatorsapi_python_sdk import ApiClient
     from creatorsapi_python_sdk import DefaultApi as AmazonCreatorsApi
-    try:
-        from creatorsapi_python_sdk import Country
-    except ImportError:
-        class Country:
-            ES = "ES"
+    from creatorsapi_python_sdk.models.get_items_request_content import GetItemsRequestContent
     from creatorsapi_python_sdk.models.get_items_resource import GetItemsResource
 except ImportError:
+    ApiClient = None
     AmazonCreatorsApi = None
-    class Country: ES = "ES"
+    GetItemsRequestContent = None
     class GetItemsResource: 
         ITEM_INFO_DOT_TITLE = "ItemInfo.Title"
         def __getattr__(cls, name): return name
     GetItemsResource = GetItemsResource()
 
+logger = logging.getLogger(__name__)
 
 # Credenciales obtenidas de variables de entorno (.env)
 CREDENTIAL_ID     = os.getenv("AMAZON_CLIENT_ID",     "TU_CREDENTIAL_ID")
 CREDENTIAL_SECRET = os.getenv("AMAZON_CLIENT_SECRET",  "TU_CREDENTIAL_SECRET")
 AFFILIATE_TAG     = os.getenv("AMAZON_AFFILIATE_TAG",  "buenchollo0b-21")
-API_VERSION       = "3.2"
-COUNTRY           = Country.ES
+CREDENTIAL_VERSION = os.getenv("AMAZON_CREDENTIAL_VERSION", "")
+SUPPORTED_CREDENTIAL_VERSIONS = ("3.2", "3.1", "3.0")
+MARKETPLACE = os.getenv("AMAZON_MARKETPLACE", "www.amazon.es")
 
 # Lista de recursos que le pedimos a Amazon para cada producto
 RESOURCES = [
@@ -145,10 +146,11 @@ def extraer_producto(item, tag: str) -> ProductInfo:
     p.asin = item.asin or ""
     p.url_afiliado = item.detail_page_url or f"https://www.amazon.es/dp/{p.asin}?tag={tag}"
 
-    # Limpieza del título: nos quedamos solo con la parte descriptiva antes de guiones o comas largas
     raw_title = _safe(item, "item_info", "title", "display_value", default="")
     if raw_title:
         p.titulo = re.split(r'(?:,\s+|\s+-\s+|\s+–\s+|\s+—\s+|\s+_\s+|\s+\|\s+|\|)', raw_title)[0].strip()
+    else:
+        p.titulo = ""
 
     p.marca = _safe(item, "item_info", "by_line_info", "brand", "display_value", default="")
 
@@ -160,14 +162,32 @@ def extraer_producto(item, tag: str) -> ProductInfo:
         pass
 
     try:
+        feats = item.item_info.features.display_values
+        if feats:
+            p.descripcion = [f for f in feats if f]
+    except Exception:
+        pass
+
+    try:
         p.imagen_principal = item.images.primary.large.url or ""
+    except Exception:
+        pass
+    try:
         variants = item.images.variants
         if variants:
             p.imagenes_extra = [v.large.url for v in variants if _safe(v, "large", "url")][:6]
     except Exception:
         pass
 
-    # Extracción de precios y detalles de oferta
+    try:
+        p.valoracion = item.customer_reviews.star_rating.value
+    except Exception:
+        pass
+    try:
+        p.num_valoraciones = item.customer_reviews.count.value
+    except Exception:
+        pass
+
     try:
         listings = item.offers_v2.listings
         if listings:
@@ -185,14 +205,31 @@ def extraer_producto(item, tag: str) -> ProductInfo:
             savings_pct = _safe(listing, "price", "savings", "percentage")
             if savings_pct:
                 p.descuento_porcentaje = int(savings_pct)
+            elif p.precio_actual and p.precio_anterior and p.precio_anterior > p.precio_actual:
+                pct = ((p.precio_anterior - p.precio_actual) / p.precio_anterior) * 100
+                p.descuento_porcentaje = round(pct)
+
+            avail = _safe(listing, "availability", "message")
+            if avail:
+                p.disponibilidad = avail
 
             deal_badge = _safe(listing, "deal_details", "badge")
             if deal_badge:
                 p.badge_oferta = deal_badge
                 p.es_oferta = True
 
-            p.fin_oferta = _safe(listing, "deal_details", "end_time")
+            deal_end = _safe(listing, "deal_details", "end_time")
+            if deal_end:
+                p.fin_oferta = deal_end
             p.vendedor = _safe(listing, "merchant_info", "name", default="")
+    except Exception:
+        pass
+
+    try:
+        tech = item.item_info.technical_info
+        if tech and hasattr(tech, "formats") and tech.formats:
+            for fmt in tech.formats.display_values:
+                p.caracteristicas["Formato"] = fmt
     except Exception:
         pass
 
@@ -217,6 +254,34 @@ def extract_asin_from_url(url: str) -> Optional[str]:
         pass
     return None
 
+def _extract_items_from_response(response):
+    """Normaliza la respuesta de la SDK para devolver una lista de productos."""
+    if isinstance(response, list):
+        return response
+    items_result = getattr(response, "items_result", None)
+    return getattr(items_result, "items", None) or []
+
+
+def _get_items_with_credential_version(asin: str, credential_version: str):
+    """Consulta la SDK oficial usando la firma real de DefaultApi + ApiClient."""
+    if ApiClient is None or AmazonCreatorsApi is None or GetItemsRequestContent is None:
+        raise RuntimeError("La SDK creatorsapi_python_sdk no está instalada.")
+
+    api_client = ApiClient(
+        credential_id=CREDENTIAL_ID,
+        credential_secret=CREDENTIAL_SECRET,
+        version=credential_version,
+    )
+    api = AmazonCreatorsApi(api_client)
+    request = GetItemsRequestContent(
+        partnerTag=AFFILIATE_TAG,
+        itemIds=[asin],
+        resources=RESOURCES,
+    )
+    response = api.get_items(MARKETPLACE, request)
+    return _extract_items_from_response(response)
+
+
 def get_product(url_or_asin: str) -> Optional[ProductInfo]:
     """Función principal para obtener datos de un producto desde Amazon."""
     if url_or_asin.startswith("http"):
@@ -227,23 +292,22 @@ def get_product(url_or_asin: str) -> Optional[ProductInfo]:
     if not asin:
         return None
 
-    api = AmazonCreatorsApi(
-        credential_id=CREDENTIAL_ID,
-        credential_secret=CREDENTIAL_SECRET,
-        version=API_VERSION,
-        tag=AFFILIATE_TAG,
-        country=COUNTRY,
-        throttling=1,
-    )
+    credential_versions = [CREDENTIAL_VERSION] if CREDENTIAL_VERSION else list(SUPPORTED_CREDENTIAL_VERSIONS)
+    last_error: Exception | None = None
 
-    try:
-        items = api.get_items([asin], resources=RESOURCES)
-        if not items:
-            return None
-        return extraer_producto(items[0], AFFILIATE_TAG)
-    except Exception as e:
-        print(f"[✗] Error de API: {e}")
-        return None
+    for credential_version in credential_versions:
+        try:
+            items = _get_items_with_credential_version(asin, credential_version)
+            if not items:
+                return None
+            return extraer_producto(items[0], AFFILIATE_TAG)
+        except Exception as e:
+            last_error = e
+            if CREDENTIAL_VERSION or "invalid_client" not in str(e):
+                break
+
+    logger.error("Error de API de Amazon: %s", last_error)
+    return None
 
 def main():
     if len(sys.argv) < 2:

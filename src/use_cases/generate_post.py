@@ -47,6 +47,10 @@ class GeneratePostUseCase:
         product_info = self.amazon_service.get_product(url_or_asin)
         if not product_info:
             return {"text": None, "product": None}
+
+        url_or_asin_limpio = url_or_asin.strip()
+        if url_or_asin_limpio.startswith("http"):
+            product_info.url_afiliado = url_or_asin_limpio
             
         # 2. Pedimos a la IA (GPT) que escriba un resumen persuasivo
         if product_info.descripcion:
@@ -60,10 +64,14 @@ class GeneratePostUseCase:
             catalog = self.category_repository.load_catalog()
             categorias_disponibles = catalog.to_sorted_list()
             
+            titulo_ref = product_info.titulo or ""
+            desc_ref = product_info.descripcion_gpt or (
+                product_info.descripcion[0] if product_info.descripcion else ""
+            )
             # La IA intenta elegir las categorías más adecuadas
             raw_categories = self.gpt_service.seleccionar_categorias(
-                titulo=product_info.titulo or "",
-                descripcion_resumida=product_info.descripcion_gpt or "",
+                titulo=titulo_ref,
+                descripcion_resumida=desc_ref,
                 categorias_disponibles=categorias_disponibles
             )
             
@@ -72,7 +80,7 @@ class GeneratePostUseCase:
             # Si la IA no se decide, usamos el buscador de palabras clave tradicional
             if not categorias_elegidas:
                 categorias_elegidas = self._fallback_select_categories(
-                    f"{product_info.titulo} {product_info.descripcion_gpt}",
+                    f"{titulo_ref} {desc_ref}",
                     categorias_disponibles
                 )
                 
