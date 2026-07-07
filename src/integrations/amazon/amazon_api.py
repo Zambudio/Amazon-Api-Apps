@@ -32,14 +32,25 @@ try:
     from creatorsapi_python_sdk import DefaultApi as AmazonCreatorsApi
     from creatorsapi_python_sdk.models.get_items_request_content import GetItemsRequestContent
     from creatorsapi_python_sdk.models.get_items_resource import GetItemsResource
+    from creatorsapi_python_sdk.models.search_items_request_content import SearchItemsRequestContent
+    from creatorsapi_python_sdk.models.search_items_resource import SearchItemsResource
+    from creatorsapi_python_sdk.models.sort_by import SortBy
 except ImportError:
     ApiClient = None
     AmazonCreatorsApi = None
     GetItemsRequestContent = None
-    class GetItemsResource: 
+    SearchItemsRequestContent = None
+    SortBy = None
+    class GetItemsResource:
         ITEM_INFO_DOT_TITLE = "ItemInfo.Title"
         def __getattr__(cls, name): return name
     GetItemsResource = GetItemsResource()
+    class SearchItemsResource:
+        ITEM_INFO_DOT_TITLE = "ItemInfo.Title"
+        def __getattr__(cls, name): return name
+    SearchItemsResource = SearchItemsResource()
+
+from src.integrations.amazon.lwa_auth import LwaTokenManager
 
 logger = logging.getLogger(__name__)
 
@@ -47,9 +58,15 @@ logger = logging.getLogger(__name__)
 CREDENTIAL_ID     = os.getenv("AMAZON_CLIENT_ID",     "TU_CREDENTIAL_ID")
 CREDENTIAL_SECRET = os.getenv("AMAZON_CLIENT_SECRET",  "TU_CREDENTIAL_SECRET")
 AFFILIATE_TAG     = os.getenv("AMAZON_AFFILIATE_TAG",  "buenchollo0b-21")
-CREDENTIAL_VERSION = os.getenv("AMAZON_CREDENTIAL_VERSION", "")
-SUPPORTED_CREDENTIAL_VERSIONS = ("3.2", "3.1", "3.0")
 MARKETPLACE = os.getenv("AMAZON_MARKETPLACE", "www.amazon.es")
+
+# Nuestras credenciales son de tipo LWA clásico, no del flujo Cognito que trae
+# por defecto la SDK oficial (ver src/integrations/amazon/lwa_auth.py). API_VERSION
+# solo se usa como texto en la cabecera Authorization ("Bearer <token>, Version X"),
+# no selecciona ningún endpoint.
+AUTH_ENDPOINT = os.getenv("AMAZON_AUTH_ENDPOINT", "https://api.amazon.co.uk/auth/o2/token")
+OAUTH_SCOPE = os.getenv("AMAZON_OAUTH_SCOPE", "creatorsapi::default")
+API_VERSION = os.getenv("AMAZON_API_VERSION", "3.2")
 
 # Lista de recursos que le pedimos a Amazon para cada producto
 RESOURCES = [
@@ -69,6 +86,20 @@ RESOURCES = [
     GetItemsResource.CUSTOMER_REVIEWS_DOT_STAR_RATING,
     GetItemsResource.CUSTOMER_REVIEWS_DOT_COUNT,
     GetItemsResource.BROWSE_NODE_INFO_DOT_BROWSE_NODES,
+]
+
+# Recursos que pedimos a Amazon al buscar productos por categoría (búsqueda de chollos).
+SEARCH_RESOURCES = [
+    SearchItemsResource.ITEM_INFO_DOT_TITLE,
+    SearchItemsResource.ITEM_INFO_DOT_BY_LINE_INFO,
+    SearchItemsResource.IMAGES_DOT_PRIMARY_DOT_LARGE,
+    SearchItemsResource.OFFERS_V2_DOT_LISTINGS_DOT_PRICE,
+    SearchItemsResource.OFFERS_V2_DOT_LISTINGS_DOT_DEAL_DETAILS,
+    SearchItemsResource.OFFERS_V2_DOT_LISTINGS_DOT_IS_BUY_BOX_WINNER,
+    SearchItemsResource.OFFERS_V2_DOT_LISTINGS_DOT_MERCHANT_INFO,
+    SearchItemsResource.CUSTOMER_REVIEWS_DOT_STAR_RATING,
+    SearchItemsResource.CUSTOMER_REVIEWS_DOT_COUNT,
+    SearchItemsResource.BROWSE_NODE_INFO_DOT_BROWSE_NODES,
 ]
 
 @dataclass
@@ -262,17 +293,35 @@ def _extract_items_from_response(response):
     return getattr(items_result, "items", None) or []
 
 
-def _get_items_with_credential_version(asin: str, credential_version: str):
-    """Consulta la SDK oficial usando la firma real de DefaultApi + ApiClient."""
-    if ApiClient is None or AmazonCreatorsApi is None or GetItemsRequestContent is None:
+_token_manager: Optional[LwaTokenManager] = None
+
+
+def _get_token_manager() -> LwaTokenManager:
+    """Devuelve el gestor de token LWA, creándolo la primera vez (se reutiliza para cachear el token)."""
+    global _token_manager
+    if _token_manager is None:
+        _token_manager = LwaTokenManager(CREDENTIAL_ID, CREDENTIAL_SECRET, AUTH_ENDPOINT, OAUTH_SCOPE)
+    return _token_manager
+
+
+def _build_api():
+    """Construye el cliente de la SDK oficial, inyectando nuestro propio token LWA
+    en vez de dejar que la SDK use su flujo OAuth2/Cognito por defecto (incompatible
+    con estas credenciales, ver src/integrations/amazon/lwa_auth.py)."""
+    if ApiClient is None or AmazonCreatorsApi is None:
         raise RuntimeError("La SDK creatorsapi_python_sdk no está instalada.")
 
-    api_client = ApiClient(
-        credential_id=CREDENTIAL_ID,
-        credential_secret=CREDENTIAL_SECRET,
-        version=credential_version,
-    )
-    api = AmazonCreatorsApi(api_client)
+    api_client = ApiClient(credential_id=CREDENTIAL_ID, credential_secret=CREDENTIAL_SECRET, version=API_VERSION)
+    api_client._token_manager = _get_token_manager()
+    return AmazonCreatorsApi(api_client)
+
+
+def _get_items(asin: str):
+    """Consulta get_items de la SDK oficial para un ASIN concreto."""
+    if GetItemsRequestContent is None:
+        raise RuntimeError("La SDK creatorsapi_python_sdk no está instalada.")
+
+    api = _build_api()
     request = GetItemsRequestContent(
         partnerTag=AFFILIATE_TAG,
         itemIds=[asin],
@@ -280,6 +329,55 @@ def _get_items_with_credential_version(asin: str, credential_version: str):
     )
     response = api.get_items(MARKETPLACE, request)
     return _extract_items_from_response(response)
+
+
+def _search_items(
+    search_index: Optional[str],
+    browse_node_id: Optional[str],
+    keywords: Optional[str],
+    min_saving_percent: Optional[int],
+    sort_by,
+    item_count: int,
+):
+    """Consulta search_items de la SDK oficial para una categoría/palabras clave."""
+    if SearchItemsRequestContent is None:
+        raise RuntimeError("La SDK creatorsapi_python_sdk no está instalada.")
+
+    api = _build_api()
+    request = SearchItemsRequestContent(
+        partnerTag=AFFILIATE_TAG,
+        searchIndex=search_index,
+        browseNodeId=browse_node_id,
+        keywords=keywords,
+        minSavingPercent=min_saving_percent,
+        sortBy=sort_by,
+        itemCount=item_count,
+        resources=SEARCH_RESOURCES,
+    )
+    response = api.search_items(MARKETPLACE, request)
+    search_result = getattr(response, "search_result", None)
+    return getattr(search_result, "items", None) or []
+
+
+def search_products(
+    search_index: Optional[str] = None,
+    browse_node_id: Optional[str] = None,
+    keywords: Optional[str] = None,
+    min_saving_percent: Optional[int] = 20,
+    sort_by=None,
+    item_count: int = 10,
+) -> list[ProductInfo]:
+    """Busca productos en Amazon por categoría/palabras clave y devuelve una lista de ProductInfo.
+
+    A diferencia de get_product (que consulta un ASIN concreto), esta función explora
+    una categoría entera filtrando por porcentaje mínimo de ahorro, para descubrir chollos.
+    """
+    try:
+        items = _search_items(search_index, browse_node_id, keywords, min_saving_percent, sort_by, item_count)
+        return [extraer_producto(item, AFFILIATE_TAG) for item in items]
+    except Exception as e:
+        logger.error("Error de API de Amazon al buscar productos: %s", e)
+        return []
 
 
 def get_product(url_or_asin: str) -> Optional[ProductInfo]:
@@ -292,22 +390,14 @@ def get_product(url_or_asin: str) -> Optional[ProductInfo]:
     if not asin:
         return None
 
-    credential_versions = [CREDENTIAL_VERSION] if CREDENTIAL_VERSION else list(SUPPORTED_CREDENTIAL_VERSIONS)
-    last_error: Exception | None = None
-
-    for credential_version in credential_versions:
-        try:
-            items = _get_items_with_credential_version(asin, credential_version)
-            if not items:
-                return None
-            return extraer_producto(items[0], AFFILIATE_TAG)
-        except Exception as e:
-            last_error = e
-            if CREDENTIAL_VERSION or "invalid_client" not in str(e):
-                break
-
-    logger.error("Error de API de Amazon: %s", last_error)
-    return None
+    try:
+        items = _get_items(asin)
+        if not items:
+            return None
+        return extraer_producto(items[0], AFFILIATE_TAG)
+    except Exception as e:
+        logger.error("Error de API de Amazon: %s", e)
+        return None
 
 def main():
     if len(sys.argv) < 2:
