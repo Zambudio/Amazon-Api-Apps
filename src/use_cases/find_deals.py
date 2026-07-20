@@ -7,6 +7,7 @@ mínimo de ahorro solicitado a la API no se respeta con exactitud.
 """
 
 import logging
+import time
 from typing import Optional
 from src.services.amazon_service import AmazonService
 from src.domain.entities import ProductInfo
@@ -32,6 +33,7 @@ class FindDealsUseCase:
         de descuento pedido (mínimo, y máximo si se indica), ordenados de
         mayor a menor descuento.
         """
+        productos = []
         try:
             # No reenviamos min_descuento como filtro a la API de Amazon: su
             # parámetro minSavingPercent combinado con browseNodeId es poco
@@ -39,29 +41,51 @@ class FindDealsUseCase:
             # sí existan ofertas que los cumplirían). Pedimos siempre con un
             # umbral bajo fijo para traer el mayor número posible de ofertas
             # y aplicamos el umbral real del usuario en el filtro local.
-            productos = self.amazon_service.search_deals(
-                categoria=categoria,
-                min_saving_percent=1,
-                item_count=limite,
-            )
+            # Realizamos varias peticiones (hasta 10 páginas) pidiendo el máximo
+            # permitido (10) en cada una, para encontrar todos los chollos posibles.
+            for page in range(1, 11):
+                logger.info(f"Buscando chollos en categoría '{categoria}', página {page}")
+                page_items = self.amazon_service.search_deals(
+                    categoria=categoria,
+                    min_saving_percent=1,
+                    item_count=10,
+                    item_page=page,
+                )
+
+                if not page_items:
+                    break
+
+                productos.extend(page_items)
+
+                # Si nos devuelve menos de 10, es que ya no hay más resultados.
+                if len(page_items) < 10:
+                    break
+
+                # Respetar los rate limits de Amazon
+                time.sleep(1)
         except ValueError:
             raise
         except Exception:
             logger.exception("Error al buscar chollos en la categoría '%s'", categoria)
-            return []
+            # Retornamos los productos que hayamos podido acumular antes del error
+            if not productos:
+                return []
 
         # Filtro de seguridad: la API puede devolver productos por debajo del
         # umbral pedido, o sin descuento calculado. También descartamos
         # productos sin título o imagen, ya que no son útiles para publicar.
         # El descuento mínimo/máximo pedido por el usuario se aplica siempre
         # aquí, en el cliente (ver motivo arriba).
-        chollos = [
-            p for p in productos
-            if p.titulo and p.imagen_principal
-            and p.descuento_porcentaje is not None
-            and p.descuento_porcentaje >= min_descuento
-            and (max_descuento is None or p.descuento_porcentaje <= max_descuento)
-        ]
+        # Agrupamos por ASIN para evitar posibles duplicados que devuelva la API
+        # en páginas distintas.
+        chollos_dict = {}
+        for p in productos:
+            if (p.titulo and p.imagen_principal
+                and p.descuento_porcentaje is not None
+                and p.descuento_porcentaje >= min_descuento
+                and (max_descuento is None or p.descuento_porcentaje <= max_descuento)):
+                chollos_dict[p.asin] = p
 
+        chollos = list(chollos_dict.values())
         chollos.sort(key=lambda p: p.descuento_porcentaje, reverse=True)
-        return chollos[:limite]
+        return chollos

@@ -28,7 +28,7 @@ class AmazonService:
         return amazon_api.get_product(url_or_asin)
 
     @staticmethod
-    def search_deals(categoria: str, min_saving_percent: int = 20, item_count: int = 10) -> list[ProductInfo]:
+    def search_deals(categoria: str, min_saving_percent: int = 20, item_count: int = 10, item_page: int = 1) -> list[ProductInfo]:
         """
         Busca productos en oferta dentro de una categoría (ej. "Videojuegos") y
         devuelve una lista de productos con su información (título, precio, descuento, etc.).
@@ -39,4 +39,5 @@ class AmazonService:
             browse_node_id=config["browse_node_id"],
             min_saving_percent=min_saving_percent,
             item_count=item_count,
+            item_page=item_page,
         )

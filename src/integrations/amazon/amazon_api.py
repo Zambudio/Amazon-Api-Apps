@@ -338,6 +338,7 @@ def _search_items(
     min_saving_percent: Optional[int],
     sort_by,
     item_count: int,
+    item_page: int = 1,
 ):
     """Consulta search_items de la SDK oficial para una categoría/palabras clave."""
     if SearchItemsRequestContent is None:
@@ -352,6 +353,7 @@ def _search_items(
         minSavingPercent=min_saving_percent,
         sortBy=sort_by,
         itemCount=item_count,
+        itemPage=item_page,
         resources=SEARCH_RESOURCES,
     )
     response = api.search_items(MARKETPLACE, request)
@@ -366,6 +368,7 @@ def search_products(
     min_saving_percent: Optional[int] = 20,
     sort_by=None,
     item_count: int = 10,
+    item_page: int = 1,
 ) -> list[ProductInfo]:
     """Busca productos en Amazon por categoría/palabras clave y devuelve una lista de ProductInfo.
 
@@ -373,7 +376,7 @@ def search_products(
     una categoría entera filtrando por porcentaje mínimo de ahorro, para descubrir chollos.
     """
     try:
-        items = _search_items(search_index, browse_node_id, keywords, min_saving_percent, sort_by, item_count)
+        items = _search_items(search_index, browse_node_id, keywords, min_saving_percent, sort_by, item_count, item_page)
         return [extraer_producto(item, AFFILIATE_TAG) for item in items]
     except Exception as e:
         logger.error("Error de API de Amazon al buscar productos: %s", e)
