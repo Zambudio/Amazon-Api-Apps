@@ -25,9 +25,7 @@ class FakeAmazonService:
 
     def search_deals(self, categoria, min_saving_percent, item_count, item_page=1):
         self.llamadas.append((categoria, min_saving_percent, item_count, item_page))
-        # Para evitar bucles infinitos en los tests, devolvemos productos solo
-        # hasta que la lista devuelta tenga menos de `item_count` o lleguemos al final.
-        # Simulamos que todo está en la primera página para simplificar los tests.
+        # Return products only on the first page to simulate end of results
         return self._productos if item_page == 1 else []
 
 
@@ -44,7 +42,7 @@ def test_execute_filtra_por_descuento_minimo_y_ordena_descendente() -> None:
     resultado = use_case.execute("Videojuegos", min_descuento=20, limite=10)
 
     assert [p.titulo for p in resultado] == ["Descuento alto", "Descuento medio"]
-    assert ("Videojuegos", 1, 10, 1) in fake_service.llamadas
+    assert ("Videojuegos", 1, 100, 1) in fake_service.llamadas
 
 
 def test_execute_descarta_productos_sin_titulo_o_imagen() -> None:
@@ -61,9 +59,15 @@ def test_execute_descarta_productos_sin_titulo_o_imagen() -> None:
     assert [p.titulo for p in resultado] == ["Con todo"]
 
 
-# Eliminar test test_execute_respeta_el_limite ya que quitamos el limite
-# def test_execute_respeta_el_limite() -> None:
-#    ...
+def test_execute_respeta_el_limite() -> None:
+    productos = [_producto(f"Producto {i}", descuento=20 + i) for i in range(5)]
+    fake_service = FakeAmazonService(productos)
+    use_case = FindDealsUseCase(amazon_service=fake_service)
+
+    resultado = use_case.execute("Videojuegos", min_descuento=20, limite=2)
+
+    assert len(resultado) == 2
+    assert resultado[0].titulo == "Producto 4"
 
 
 def test_execute_filtra_por_descuento_maximo() -> None:

@@ -42,13 +42,13 @@ class FindDealsUseCase:
             # umbral bajo fijo para traer el mayor número posible de ofertas
             # y aplicamos el umbral real del usuario en el filtro local.
             # Realizamos varias peticiones (hasta 10 páginas) pidiendo el máximo
-            # permitido (10) en cada una, para encontrar todos los chollos posibles.
+            # permitido (100) en cada una, para encontrar todos los chollos posibles.
             for page in range(1, 11):
                 logger.info(f"Buscando chollos en categoría '{categoria}', página {page}")
                 page_items = self.amazon_service.search_deals(
                     categoria=categoria,
                     min_saving_percent=1,
-                    item_count=10,
+                    item_count=100,
                     item_page=page,
                 )
 
@@ -57,8 +57,8 @@ class FindDealsUseCase:
 
                 productos.extend(page_items)
 
-                # Si nos devuelve menos de 10, es que ya no hay más resultados.
-                if len(page_items) < 10:
+                # Si nos devuelve menos de 100, es que ya no hay más resultados.
+                if len(page_items) < 100:
                     break
 
                 # Respetar los rate limits de Amazon
@@ -88,4 +88,4 @@ class FindDealsUseCase:
 
         chollos = list(chollos_dict.values())
         chollos.sort(key=lambda p: p.descuento_porcentaje, reverse=True)
-        return chollos
+        return chollos[:limite]
