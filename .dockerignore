@@ -1,0 +1,55 @@
+# ==============================================================================
+# DOCKERIGNORE — Amazon-Api-Apps
+# ==============================================================================
+# Previene la inclusión de secretos, entornos virtuales y archivos locales en la imagen
+
+# Secretos y variables de entorno
+.env
+.env.*
+!.env.example
+
+# Git y repositorios
+.git/
+.gitignore
+
+# Entornos virtuales
+.venv/
+.venv*/
+env/
+venv/
+
+# Sesiones de usuario y archivos temporales
+runtime/*
+!runtime/.gitkeep
+*.session
+*.session-journal
+
+# Datos masivos de scraping
+data/max_ofertas_*.json
+data/explore_*.json
+data/todos_los_productos.json
+data/raw_amazon.json
+nas_data/
+
+# Tests y cachés
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
+__pycache__/
+*.pyc
+*.pyo
+
+# IDEs y sistemas
+.vscode/
+.idea/
+.claude/
+Thumbs.db
+ehthumbs.db
+[Dd]esktop.ini
+
+# Builds locales
+build/
+dist/
+*.spec
+*.bat

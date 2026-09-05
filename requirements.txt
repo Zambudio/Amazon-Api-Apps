@@ -1,0 +1,10 @@
+requests
+Pillow
+ttkbootstrap
+fastapi
+uvicorn
+telethon
+python-dotenv
+amazon-creatorsapi-python-sdk
+keepa
+pytest
